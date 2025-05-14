@@ -10,18 +10,18 @@ if %ERRORLEVEL% NEQ 0 (
 
 echo Moving files to webapps directory...
 
-if exist target\eventmaster.war (
-    move /Y target\eventmaster.war "%WEBAPPS_PATH%"
+if exist target\user-service.war (
+    move /Y target\user-service.war "%WEBAPPS_PATH%"
 ) else (
-    echo eventmaster.war not found!
+    echo user-service.war not found!
 )
 
-if exist target\eventmaster (
-    xcopy /E /I /Y "target\eventmaster" "%WEBAPPS_PATH%\eventmaster"
+if exist target\user-service (
+    xcopy /E /I /Y "target\user-service" "%WEBAPPS_PATH%\user-service"
 ) else (
-    echo eventmaster directory not found!
+    echo user-service directory not found!
 )
 
-echo Done moving eventmaster files
+echo Done moving user-service files
 
 call catalina.bat jpda start

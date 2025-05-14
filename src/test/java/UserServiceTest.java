@@ -13,6 +13,8 @@ import org.mockito.*;
 
 
 public class UserServiceTest {
+    private static final String username = "testUser";
+    private static final String testemail = "testemail";
     @Mock
     private UserRepository userRepository;
 
@@ -26,8 +28,7 @@ public class UserServiceTest {
 
     @Test
     public void testFindByUsername(){
-        String username = "testuser";
-        User user = new User(username, "password123", "testUser@example.com", "testUser", "Austin, TX");
+        User user = new User(username, "password123", "testUser@example.com", username, "Austin, TX");
         when(userRepository.findByUsername(username)).thenReturn(Optional.of(user));
 
         User found = userService.findByUsername(username);
@@ -40,7 +41,7 @@ public class UserServiceTest {
     @Test
     public void testUserNotFoundByUsername(){
         try{
-            userService.findByUsername("username");
+            userService.findByUsername(username);
         } catch (RuntimeException e){
             assert(e.getMessage().equals("User not found"));
         }
@@ -57,11 +58,9 @@ public class UserServiceTest {
 
     @Test
     public void testUserNotFoundByEmail(){
-        String email = "test";
+        User user = userService.findByEmail(testemail);
 
-        Optional<User> user = userService.findByEmail(email);
-
-        assertFalse(user.isPresent());
+        assertFalse(user != null);
     }
 
     @Test
