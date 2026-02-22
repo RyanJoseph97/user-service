@@ -1,5 +1,6 @@
 package com.eventmaster.service;
 
+import com.eventmaster.exception.UserNotFoundException;
 import com.eventmaster.model.User;
 import com.eventmaster.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,12 +20,12 @@ public class UserService {
 
     public User findByUsername(String username){
         return userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> UserNotFoundException.byUsername(username));
     }
 
     public User findByEmail(String email){
         return userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> UserNotFoundException.byEmail(email));
     }
 
     public Optional<User> findById(Long id){

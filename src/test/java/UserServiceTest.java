@@ -1,6 +1,7 @@
 import com.eventmaster.model.User;
 import com.eventmaster.repository.UserRepository;
 import com.eventmaster.service.UserService;
+import com.eventmaster.exception.UserNotFoundException;
 
 import java.util.Optional;
 
@@ -42,8 +43,8 @@ public class UserServiceTest {
     public void testUserNotFoundByUsername(){
         try{
             userService.findByUsername(username);
-        } catch (RuntimeException e){
-            assert(e.getMessage().equals("User not found"));
+        } catch (UserNotFoundException e){
+            assert(e.getMessage().equals("User not found with username: " + username));
         }
     }
 
@@ -58,9 +59,11 @@ public class UserServiceTest {
 
     @Test
     public void testUserNotFoundByEmail(){
-        User user = userService.findByEmail(testemail);
-
-        assertFalse(user != null);
+        try {
+            User user = userService.findByEmail(testemail);
+        } catch(UserNotFoundException e){
+            assert(e.getMessage().equals("User not found with email: " + testemail));
+        }
     }
 
     @Test
@@ -74,19 +77,19 @@ public class UserServiceTest {
         }
     }
 
-//    @Test
-//    public void testUserFindByEmail(){
-//        String email = "test@test";
-//        User user = new User("ryanjo", "test", email, "ryan", "Austin,Tx");
-//
-//        userService.saveUser(user);
-//
-//        Optional<User> user_ret = userService.findByEmail(email);
-//
-//        assert(userService.findByEmail(email).get().equals(user));
-//
-//
-//
-//    }
+    @Test
+    public void testUserFindByEmail(){
+        String email = "test@test";
+        User user = new User("ryanjo", "test", email, "ryan", "Austin,Tx");
+
+        // Mock the repository to return the user when findByEmail is called
+        when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
+
+        User user_ret = userService.findByEmail(email);
+
+        assertNotNull(user_ret);
+        assertEquals(email, user_ret.getEmail());
+        assertEquals(user.getUsername(), user_ret.getUsername());
+    }
 
 }

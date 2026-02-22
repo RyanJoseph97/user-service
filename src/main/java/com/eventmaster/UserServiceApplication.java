@@ -1,13 +1,11 @@
 package com.eventmaster;
 
-import com.eventmaster.controller.UserController;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.support.ClassPathXmlApplicationContext;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
 
+@SpringBootApplication
 public class UserServiceApplication {
-    public static void main(String[] args){
-        ApplicationContext context = new ClassPathXmlApplicationContext("C:/Program Files/Apache Software Foundation/Tomcat 9.0/webapps/eventmaster/WEB-INF/applicationContext.xml");
-
-        UserController userController = context.getBean(UserController.class);
+    public static void main(String[] args) {
+        SpringApplication.run(UserServiceApplication.class, args);
     }
 }

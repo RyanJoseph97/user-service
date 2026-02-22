@@ -20,7 +20,14 @@ public class UserController {
         this.userService = userService;
     }
 
-    @GetMapping("/{username}")
+    @GetMapping("/{id}")
+    public ResponseEntity<User> getUserById(@PathVariable Long id){
+        return userService.findById(id)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/by-username/{username}")
     public ResponseEntity<User> getUserByUsername(@PathVariable String username){
         User user = userService.findByUsername(username);
         if (user != null){
@@ -30,7 +37,7 @@ public class UserController {
         }
     }
 
-    @GetMapping("/email/{email}")
+    @GetMapping("/by-email/{email}")
     public ResponseEntity<User> getUserByEmail(@PathVariable String email){
         User user = userService.findByEmail(email);
         if (user != null){
@@ -38,7 +45,6 @@ public class UserController {
         } else {
             return ResponseEntity.notFound().build();
         }
-
     }
 
     @GetMapping
