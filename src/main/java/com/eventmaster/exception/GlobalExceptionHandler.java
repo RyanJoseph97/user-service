@@ -36,30 +36,27 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     /**
-     * Handle DataIntegrityViolationException - return 409 for duplicate username/email
+     * Handle DuplicateUserException - return 409 Conflict when username or email is already taken
      */
-    @ExceptionHandler(DataIntegrityViolationException.class)
-    //TODO: FIX - When trying to register a user with an existing email, it is still logging username as the violetion
-    public ResponseEntity<Object> handleDataIntegrityViolationException(DataIntegrityViolationException ex) {
-        logger.warn("Data integrity violation occurred", ex);
+    @ExceptionHandler(DuplicateUserException.class)
+    public ResponseEntity<Object> handleDuplicateUserException(DuplicateUserException ex) {
+        logger.warn("Duplicate user exception occurred: {}", ex.getMessage());
 
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("timestamp", LocalDateTime.now());
         body.put("status", HttpStatus.CONFLICT.value());
         body.put("error", "Conflict");
 
-        // Determine which field caused the constraint violation
-        String message = "A conflict occurred while saving the user.";
-        if (ex.getMessage() != null) {
-            if (ex.getMessage().toUpperCase().contains("USERNAME")) {
-                message = "The username is already taken. Please choose a different username.";
-            } else if (ex.getMessage().toUpperCase().contains("EMAIL")) {
-                message = "The email address is already registered. Please use a different email.";
-            }
+        String message;
+        if (ex.isUsernameDuplicate()) {
+            message = "The username is already taken. Please choose a different username.";
+        } else if (ex.isEmailDuplicate()) {
+            message = "The email address is already registered. Please use a different email.";
+        } else {
+            message = ex.getMessage();
         }
 
         body.put("message", message);
-
         return new ResponseEntity<>(body, HttpStatus.CONFLICT);
     }
 
@@ -78,8 +75,4 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return new ResponseEntity<>(body, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 }
-
-
-
-
 

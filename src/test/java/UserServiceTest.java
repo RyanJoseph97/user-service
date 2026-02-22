@@ -1,3 +1,4 @@
+import com.eventmaster.exception.DuplicateUserException;
 import com.eventmaster.model.User;
 import com.eventmaster.repository.UserRepository;
 import com.eventmaster.service.UserService;
@@ -11,6 +12,7 @@ import static org.mockito.Mockito.when;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.*;
+import org.springframework.dao.DataIntegrityViolationException;
 
 
 public class UserServiceTest {
@@ -36,7 +38,6 @@ public class UserServiceTest {
 
         assertNotNull(found);
         assertEquals(username, found.getUsername());
-
     }
 
     @Test
@@ -58,6 +59,18 @@ public class UserServiceTest {
     }
 
     @Test
+    public void testFindByIdSuccess(){
+        long id = 1;
+        User user = new User(username, "password123", "testUser@example.com", username, "Austin, TX");
+        when(userRepository.findById(id)).thenReturn(Optional.of(user));
+
+        Optional<User> found = userService.findById(id);
+
+        assertTrue(found.isPresent());
+        assertEquals(username, found.get().getUsername());
+    }
+
+    @Test
     public void testUserNotFoundByEmail(){
         try {
             User user = userService.findByEmail(testemail);
@@ -69,12 +82,49 @@ public class UserServiceTest {
     @Test
     public void testSaveUser(){
         User user = new User("testuser", "password", "email@example.com", "Test Name", "Location");
-        try{
-            userRepository.save(user);
-        } catch (Exception e){
-            System.out.println("Exception encountered");
-            fail();
-        }
+        when(userRepository.save(user)).thenReturn(user);
+
+        User savedUser = userService.saveUser(user);
+
+        assertNotNull(savedUser);
+        assertEquals(user.getUsername(), savedUser.getUsername());
+        assertEquals(user.getEmail(), savedUser.getEmail());
+    }
+
+    @Test
+    public void testSaveUserDuplicateUsername(){
+        User user = new User("testuser", "password", "email@example.com", "Test Name", "Location");
+
+        // Simulate H2 throwing a DataIntegrityViolationException with the username in the message
+        when(userRepository.save(user))
+                .thenThrow(new DataIntegrityViolationException(
+                        "constraint [PUBLIC.CONSTRAINT_INDEX_4 ON PUBLIC.USERS(USERNAME NULLS FIRST)" +
+                        " VALUES ( /* 4 */ 'testuser' )"));
+
+        DuplicateUserException ex = assertThrows(DuplicateUserException.class,
+                () -> userService.saveUser(user));
+
+        assertTrue(ex.isUsernameDuplicate());
+        assertFalse(ex.isEmailDuplicate());
+        assertEquals("username 'testuser' is already in use", ex.getMessage());
+    }
+
+    @Test
+    public void testSaveUserDuplicateEmail(){
+        User user = new User("testuser", "password", "email@example.com", "Test Name", "Location");
+
+        // Simulate H2 throwing a DataIntegrityViolationException with the email in the message
+        when(userRepository.save(user))
+                .thenThrow(new DataIntegrityViolationException(
+                        "constraint [PUBLIC.CONSTRAINT_INDEX_4D ON PUBLIC.USERS(EMAIL NULLS FIRST)" +
+                        " VALUES ( /* 4 */ 'email@example.com' )"));
+
+        DuplicateUserException ex = assertThrows(DuplicateUserException.class,
+                () -> userService.saveUser(user));
+
+        assertTrue(ex.isEmailDuplicate());
+        assertFalse(ex.isUsernameDuplicate());
+        assertEquals("email 'email@example.com' is already in use", ex.getMessage());
     }
 
     @Test

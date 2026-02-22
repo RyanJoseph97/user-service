@@ -308,30 +308,8 @@ Content-Type: application/json
 **404 Not Found** (for GET endpoints):
 ```json
 {
-  "timestamp": "2026-02-22T11:15:30",
   "status": 404,
-  "error": "User Not Found",
   "message": "User not found with id: 999"
-}
-```
-
-**409 Conflict** (duplicate username or email):
-```json
-{
-  "timestamp": "2026-02-22T11:15:30",
-  "status": 409,
-  "error": "Conflict",
-  "message": "The email address is already registered. Please use a different email."
-}
-```
-
-**500 Internal Server Error** (other exceptions):
-```json
-{
-  "timestamp": "2026-02-22T11:15:30",
-  "status": 500,
-  "error": "Internal Server Error",
-  "message": "An unexpected error occurred"
 }
 ```
 
@@ -387,56 +365,6 @@ mvn test -Dtest=UserServiceTest#testUserFindByEmail
 Run tests with coverage:
 ```bash
 mvn test jacoco:report
-```
-
-### Testing Constraint Violations
-
-You can test the new constraint violation handling with curl:
-
-**Test duplicate email:**
-```bash
-curl -X POST http://localhost:8080/user-service/users \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "newuser",
-    "password": "password123",
-    "email": "jdoe@example.com",
-    "name": "New User",
-    "location": "Test City"
-  }'
-```
-
-**Expected response (409 Conflict):**
-```json
-{
-  "timestamp": "2026-02-22T11:20:45",
-  "status": 409,
-  "error": "Conflict",
-  "message": "The email address is already registered. Please use a different email."
-}
-```
-
-**Test duplicate username:**
-```bash
-curl -X POST http://localhost:8080/user-service/users \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "asmith",
-    "password": "password123",
-    "email": "different@example.com",
-    "name": "Another Smith",
-    "location": "Test City"
-  }'
-```
-
-**Expected response (409 Conflict):**
-```json
-{
-  "timestamp": "2026-02-22T11:20:45",
-  "status": 409,
-  "error": "Conflict",
-  "message": "The username is already taken. Please choose a different username."
-}
 ```
 
 ## Building and Deployment

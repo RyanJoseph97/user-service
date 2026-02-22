@@ -1,11 +1,13 @@
 package com.eventmaster.service;
 
+import com.eventmaster.exception.DuplicateUserException;
 import com.eventmaster.exception.UserNotFoundException;
 import com.eventmaster.model.User;
 import com.eventmaster.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -24,10 +26,40 @@ public class UserService {
             User savedUser = userRepository.save(user);
             logger.info("Successfully saved user with id: {} and username: {}", savedUser.getId(), savedUser.getUsername());
             return savedUser;
+        } catch (DataIntegrityViolationException e) {
+            // Parse the exception to determine which constraint was violated
+            String field = determineConstraintViolation(e, user);
+            logger.warn("Duplicate {} attempted: {}", field, "username".equals(field) ? user.getUsername() : user.getEmail());
+            throw new DuplicateUserException(field,
+                "username".equals(field) ? user.getUsername() : user.getEmail());
         } catch (Exception e) {
             logger.error("Error saving user with username: {}", user.getUsername(), e);
             throw e;
         }
+    }
+
+    /**
+     * Determines which field caused the constraint violation by checking if the username or email
+     * value appears in the exception message.
+     *
+     * @param e the DataIntegrityViolationException
+     * @param user the user being saved
+     * @return "username" or "email"
+     */
+    private String determineConstraintViolation(DataIntegrityViolationException e, User user) {
+        String message = e.getMessage();
+        if (message != null) {
+            // Check if the email value appears in the exception message
+            if (user.getEmail() != null && message.contains(user.getEmail())) {
+                return "email";
+            }
+            // Check if the username value appears in the exception message
+            if (user.getUsername() != null && message.contains(user.getUsername())) {
+                return "username";
+            }
+        }
+        // Default to username if we can't determine
+        return "username";
     }
 
     public User findByUsername(String username){
