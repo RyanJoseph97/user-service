@@ -9,6 +9,7 @@ A Spring Boot microservice for managing user accounts in the EventMaster applica
 - [Prerequisites](#prerequisites)
 - [Installation](#installation)
 - [Configuration](#configuration)
+- [Logging](#logging)
 - [API Endpoints](#api-endpoints)
 - [Project Structure](#project-structure)
 - [Running Tests](#running-tests)
@@ -86,7 +87,109 @@ spring.h2.console.path=/h2-console
 - **Type**: H2 (in-memory)
 - **Console**: Available at `http://localhost:8080/user-service/h2-console`
 
-## API Endpoints
+## Logging
+
+This application uses **SLF4J** with **Logback** as the default logging implementation. No additional logging library (like Log4j) is needed.
+
+### Logging Configuration
+
+Logging is configured in two places:
+
+#### 1. `application.properties` (Basic configuration)
+```properties
+logging.level.root=INFO
+logging.level.com.eventmaster=INFO
+logging.level.org.springframework.web=INFO
+logging.level.org.hibernate.SQL=DEBUG
+logging.file.name=logs/user-service.log
+logging.file.max-size=10MB
+logging.file.max-history=30
+```
+
+#### 2. `logback-spring.xml` (Advanced configuration)
+Provides detailed control over:
+- **Console output**: Real-time logs in the terminal
+- **File output**: Logs written to `logs/user-service.log`
+- **Error logs**: Separate file for errors only at `logs/user-service-error.log`
+- **Rolling policies**: Automatic log rotation based on size and date
+- **Log patterns**: Customizable timestamp, thread, level, and message formats
+
+### Log Output
+
+#### Console Output
+When running the application, logs will appear in the console with the format:
+```
+2025-02-22 10:15:30 [main] INFO com.eventmaster.service.UserService - Found user with username: asmith
+```
+
+#### File Output
+Logs are stored in:
+- `logs/user-service.log` - All application logs
+- `logs/user-service-error.log` - Error logs only
+
+### Log Levels
+
+| Level | Usage | When to Use |
+|-------|-------|------------|
+| **TRACE** | Very detailed tracing | SQL parameter binding, low-level debugging |
+| **DEBUG** | Detailed information | Method entry/exit, variable values, flow tracking |
+| **INFO** | General information | User actions, service operations, important events |
+| **WARN** | Warning messages | Unusual but recoverable situations |
+| **ERROR** | Error messages | Errors that don't stop the application |
+
+### Configuring Log Levels
+
+To change log levels, edit `application.properties`:
+
+```properties
+# Change application logging to DEBUG
+logging.level.com.eventmaster=DEBUG
+
+# Change Spring Web logging to DEBUG
+logging.level.org.springframework.web=DEBUG
+
+# Change Hibernate SQL logging to DEBUG
+logging.level.org.hibernate.SQL=DEBUG
+logging.level.org.hibernate.type.descriptor.sql.BasicBinder=TRACE
+```
+
+### Log Examples
+
+#### User Creation
+```
+2025-02-22 10:15:30 [http-nio-8080-exec-1] DEBUG com.eventmaster.controller.UserController - POST request received to create user: newuser
+2025-02-22 10:15:30 [http-nio-8080-exec-1] INFO com.eventmaster.service.UserService - Attempting to save user with username: newuser
+2025-02-22 10:15:30 [http-nio-8080-exec-1] INFO com.eventmaster.service.UserService - Successfully saved user with id: 1 and username: newuser
+2025-02-22 10:15:30 [http-nio-8080-exec-1] INFO com.eventmaster.controller.UserController - User created successfully with id: 1
+```
+
+#### User Not Found
+```
+2025-02-22 10:16:45 [http-nio-8080-exec-2] DEBUG com.eventmaster.controller.UserController - GET request received for username: nonexistent
+2025-02-22 10:16:45 [http-nio-8080-exec-2] DEBUG com.eventmaster.service.UserService - Searching for user by username: nonexistent
+2025-02-22 10:16:45 [http-nio-8080-exec-2] WARN com.eventmaster.service.UserService - User not found with username: nonexistent
+```
+
+### Spring Boot Profiles
+
+The application supports different log levels based on active profiles:
+
+#### Development Profile
+```bash
+mvn spring-boot:run -Dspring-boot.run.arguments="--spring.profiles.active=dev"
+```
+- Application logs: DEBUG
+- Spring Web logs: DEBUG
+- Hibernate SQL logs: DEBUG
+
+#### Production Profile
+```bash
+mvn spring-boot:run -Dspring-boot.run.arguments="--spring.profiles.active=prod"
+```
+- Application logs: INFO
+- Spring Framework logs: WARN
+
+
 
 ### Get User by ID
 ```http
@@ -205,8 +308,30 @@ Content-Type: application/json
 **404 Not Found** (for GET endpoints):
 ```json
 {
+  "timestamp": "2026-02-22T11:15:30",
   "status": 404,
+  "error": "User Not Found",
   "message": "User not found with id: 999"
+}
+```
+
+**409 Conflict** (duplicate username or email):
+```json
+{
+  "timestamp": "2026-02-22T11:15:30",
+  "status": 409,
+  "error": "Conflict",
+  "message": "The email address is already registered. Please use a different email."
+}
+```
+
+**500 Internal Server Error** (other exceptions):
+```json
+{
+  "timestamp": "2026-02-22T11:15:30",
+  "status": 500,
+  "error": "Internal Server Error",
+  "message": "An unexpected error occurred"
 }
 ```
 
@@ -262,6 +387,56 @@ mvn test -Dtest=UserServiceTest#testUserFindByEmail
 Run tests with coverage:
 ```bash
 mvn test jacoco:report
+```
+
+### Testing Constraint Violations
+
+You can test the new constraint violation handling with curl:
+
+**Test duplicate email:**
+```bash
+curl -X POST http://localhost:8080/user-service/users \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "newuser",
+    "password": "password123",
+    "email": "jdoe@example.com",
+    "name": "New User",
+    "location": "Test City"
+  }'
+```
+
+**Expected response (409 Conflict):**
+```json
+{
+  "timestamp": "2026-02-22T11:20:45",
+  "status": 409,
+  "error": "Conflict",
+  "message": "The email address is already registered. Please use a different email."
+}
+```
+
+**Test duplicate username:**
+```bash
+curl -X POST http://localhost:8080/user-service/users \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "asmith",
+    "password": "password123",
+    "email": "different@example.com",
+    "name": "Another Smith",
+    "location": "Test City"
+  }'
+```
+
+**Expected response (409 Conflict):**
+```json
+{
+  "timestamp": "2026-02-22T11:20:45",
+  "status": 409,
+  "error": "Conflict",
+  "message": "The username is already taken. Please choose a different username."
+}
 ```
 
 ## Building and Deployment
