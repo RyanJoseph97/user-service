@@ -1,10 +1,8 @@
 package com.eventmaster.model;
 import javax.persistence.*;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonProperty.Access;
 import java.time.LocalDate;
 
 @Entity
@@ -19,6 +17,7 @@ public class User {
     @Column(nullable = false, unique = true)
     private String username;
 
+    @JsonProperty(access = Access.WRITE_ONLY)
     @Column(nullable = false)
     private String password;
 
@@ -29,7 +28,8 @@ public class User {
 
     private String location;
 
-    @Column(name = "date_joined")
+    @JsonIgnore
+    @Column(name = "date_joined", nullable = false)
     private LocalDate dateJoined;
 
     // Constructors
