@@ -2,12 +2,13 @@ import com.eventmaster.exception.DuplicateUserException;
 import com.eventmaster.model.User;
 import com.eventmaster.repository.UserRepository;
 import com.eventmaster.service.UserService;
+import com.eventmaster.service.PasswordService;
 import com.eventmaster.exception.UserNotFoundException;
 
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -142,4 +143,52 @@ public class UserServiceTest {
         assertEquals(user.getUsername(), user_ret.getUsername());
     }
 
+    // Password hashing tests
+    @Mock
+    private PasswordService passwordService;
+
+    @Test
+    public void testSaveUserWithHashedPassword() {
+        User user = new User("testuser", "plainpassword", "email@example.com", "Test Name", "Location");
+        User savedUser = new User("testuser", "$2a$10$hashedpassword", "email@example.com", "Test Name", "Location");
+        
+        when(passwordService.isPasswordHashed("plainpassword")).thenReturn(false);
+        when(passwordService.hashPassword("plainpassword")).thenReturn("$2a$10$hashedpassword");
+        when(userRepository.save(any(User.class))).thenReturn(savedUser);
+
+        User result = userService.saveUserWithHashedPassword(user);
+
+        assertNotNull(result);
+        assertEquals("$2a$10$hashedpassword", result.getPassword());
+        verify(passwordService).hashPassword("plainpassword");
+    }
+
+    @Test
+    public void testSaveUserWithAlreadyHashedPassword() {
+        User user = new User("testuser", "$2a$10$alreadyhashed", "email@example.com", "Test Name", "Location");
+        User savedUser = new User("testuser", "$2a$10$alreadyhashed", "email@example.com", "Test Name", "Location");
+        
+        when(passwordService.isPasswordHashed("$2a$10$alreadyhashed")).thenReturn(true);
+        when(userRepository.save(any(User.class))).thenReturn(savedUser);
+
+        User result = userService.saveUserWithHashedPassword(user);
+
+        assertNotNull(result);
+        assertEquals("$2a$10$alreadyhashed", result.getPassword());
+        verify(passwordService, never()).hashPassword(anyString());
+    }
+
+    @Test
+    public void testSaveUserWithNullPassword() {
+        User user = new User("testuser", null, "email@example.com", "Test Name", "Location");
+        User savedUser = new User("testuser", null, "email@example.com", "Test Name", "Location");
+        
+        when(userRepository.save(any(User.class))).thenReturn(savedUser);
+
+        User result = userService.saveUserWithHashedPassword(user);
+
+        assertNotNull(result);
+        assertNull(result.getPassword());
+        verify(passwordService, never()).hashPassword(anyString());
+    }
 }

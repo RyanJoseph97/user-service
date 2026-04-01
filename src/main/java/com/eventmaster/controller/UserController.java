@@ -1,7 +1,10 @@
 package com.eventmaster.controller;
 
 import com.eventmaster.model.User;
+import com.eventmaster.model.LoginResponse;
 import com.eventmaster.service.UserService;
+import com.eventmaster.service.PasswordService;
+import com.eventmaster.jwt.JwtConfig;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -17,11 +20,16 @@ import java.util.List;
 public class UserController {
     private static final Logger logger = LoggerFactory.getLogger(UserController.class);
     private final UserService userService;
+    private final PasswordService passwordService;
 
     @Autowired
-    public UserController(UserService userService) {
+    public UserController(UserService userService, PasswordService passwordService, JwtConfig jwtConfig) {
         this.userService = userService;
+        this.passwordService = passwordService;
+        this.jwtConfig = jwtConfig;
     }
+
+    private final JwtConfig jwtConfig;
 
     @GetMapping("/{id}")
     public ResponseEntity<User> getUserById(@PathVariable Long id){
@@ -74,9 +82,81 @@ public class UserController {
     @PostMapping
     public User createUser(@RequestBody User user){
         logger.debug("POST request received to create user: {}", user.getUsername());
-        User createdUser = userService.saveUser(user);
+        User createdUser = userService.saveUserWithHashedPassword(user);
         logger.info("User created successfully with id: {}", createdUser.getId());
         return createdUser;
+    }
+
+    /**
+     * Login endpoint for user authentication.
+     * Returns a JWT token and user information upon successful authentication.
+     * 
+     * @param loginRequest contains username and password
+     * @return LoginResponse with JWT token and user info, or 401 if invalid credentials
+     */
+    @PostMapping("/login")
+    public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest loginRequest) {
+        logger.debug("Login attempt for username: {}", loginRequest.getUsername());
+        
+        try {
+            User user = userService.findByUsername(loginRequest.getUsername());
+            
+            // Verify password using the PasswordService
+            if (passwordService.verifyPassword(loginRequest.getPassword(), user.getPassword())) {
+                // Generate JWT token
+                String jwtToken = jwtConfig.generateToken(user.getUsername());
+                
+                // Create login response with token and user info
+                LoginResponse loginResponse = new LoginResponse(
+                    jwtToken,
+                    user.getUsername(),
+                    user.getEmail(),
+                    user.getName(),
+                    user.getLocation(),
+                    user.getDateJoined().toString()
+                );
+                
+                logger.info("Successful login for user: {}", loginRequest.getUsername());
+                return ResponseEntity.ok(loginResponse);
+            } else {
+                logger.warn("Invalid password for user: {}", loginRequest.getUsername());
+                return ResponseEntity.status(401).build();
+            }
+        } catch (Exception e) {
+            logger.warn("Login failed for username: {}", loginRequest.getUsername(), e);
+            return ResponseEntity.status(401).build();
+        }
+    }
+
+    /**
+     * Simple login request DTO for authentication.
+     */
+    public static class LoginRequest {
+        private String username;
+        private String password;
+
+        public LoginRequest() {}
+
+        public LoginRequest(String username, String password) {
+            this.username = username;
+            this.password = password;
+        }
+
+        public String getUsername() {
+            return username;
+        }
+
+        public void setUsername(String username) {
+            this.username = username;
+        }
+
+        public String getPassword() {
+            return password;
+        }
+
+        public void setPassword(String password) {
+            this.password = password;
+        }
     }
 
 }

@@ -20,6 +20,9 @@ public class UserService {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private PasswordService passwordService;
+
     public User saveUser(User user) {
         logger.info("Attempting to save user with username: {}", user.getUsername());
         try {
@@ -36,6 +39,33 @@ public class UserService {
             logger.error("Error saving user with username: {}", user.getUsername(), e);
             throw e;
         }
+    }
+
+    /**
+     * Save a user with automatic password hashing.
+     * This method should be used when creating users from user input to ensure
+     * passwords are properly hashed before being stored in the database.
+     * 
+     * @param user the user to save (password will be hashed automatically)
+     * @return the saved user with hashed password
+     */
+    public User saveUserWithHashedPassword(User user) {
+        logger.info("Attempting to save user with username: {} (password will be hashed)", user.getUsername());
+        
+        // Hash the password before saving
+        if (user.getPassword() != null && !user.getPassword().trim().isEmpty()) {
+            // Check if password is already hashed to avoid double-hashing
+            if (!passwordService.isPasswordHashed(user.getPassword())) {
+                user.setHashedPassword(user.getPassword(), passwordService);
+                logger.debug("Password hashed for user: {}", user.getUsername());
+            } else {
+                logger.debug("Password already hashed for user: {}", user.getUsername());
+            }
+        } else {
+            logger.warn("No password provided for user: {}", user.getUsername());
+        }
+        
+        return saveUser(user);
     }
 
     /**
