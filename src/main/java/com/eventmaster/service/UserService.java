@@ -56,13 +56,8 @@ public class UserService {
             throw new IllegalArgumentException("Password must not be null or blank");
         }
 
-        // Check if password is already hashed to avoid double-hashing
-        if (!passwordService.isPasswordHashed(user.getPassword())) {
-            user.setPassword(passwordService.hashPassword(user.getPassword()));
-            logger.debug("Password hashed for user: {}", user.getUsername());
-        } else {
-            logger.debug("Password already hashed for user: {}", user.getUsername());
-        }
+        user.setPassword(passwordService.hashPassword(user.getPassword()));
+        logger.debug("Password hashed for user: {}", user.getUsername());
 
         return saveUser(user);
     }

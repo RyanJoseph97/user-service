@@ -1,5 +1,6 @@
 package com.eventmaster.controller;
 
+import com.eventmaster.exception.UserNotFoundException;
 import com.eventmaster.model.User;
 import com.eventmaster.model.LoginResponse;
 import com.eventmaster.service.UserService;
@@ -111,7 +112,7 @@ public class UserController {
                     user.getEmail(),
                     user.getName(),
                     user.getLocation(),
-                    user.getDateJoined().toString()
+                    user.getDateJoined() != null ? user.getDateJoined().toString() : null
                 );
                 
                 logger.info("Successful login for user: {}", loginRequest.getUsername());
@@ -120,9 +121,12 @@ public class UserController {
                 logger.warn("Invalid password for user: {}", loginRequest.getUsername());
                 return ResponseEntity.status(401).build();
             }
-        } catch (Exception e) {
-            logger.warn("Login failed for username: {}", loginRequest.getUsername(), e);
+        } catch (UserNotFoundException e) {
+            logger.warn("Login failed - user not found: {}", loginRequest.getUsername());
             return ResponseEntity.status(401).build();
+        } catch (Exception e) {
+            logger.error("Unexpected error during login for username: {}", loginRequest.getUsername(), e);
+            return ResponseEntity.status(500).build();
         }
     }
 

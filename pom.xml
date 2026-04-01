@@ -18,13 +18,15 @@
 
     <properties>
         <java.version>11</java.version>
+        <!-- GitHub Packages owner/organization for jwt-common -->
+        <github.packages.owner>RyanJoseph97</github.packages.owner>
     </properties>
 
-    <!-- Pull jwt-common from GitHub Packages. Replace YOUR_GITHUB_USERNAME. -->
+    <!-- Pull jwt-common from GitHub Packages. -->
     <repositories>
         <repository>
             <id>github</id>
-            <url>https://maven.pkg.github.com/YOUR_GITHUB_USERNAME/jwt-common</url>
+            <url>https://maven.pkg.github.com/${github.packages.owner}/jwt-common</url>
         </repository>
     </repositories>
 
@@ -41,6 +43,10 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>

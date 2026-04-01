@@ -164,18 +164,20 @@ public class UserServiceTest {
     }
 
     @Test
-    public void testSaveUserWithAlreadyHashedPassword() {
-        User user = new User("testuser", "$2a$10$alreadyhashed", "email@example.com", "Test Name", "Location");
-        User savedUser = new User("testuser", "$2a$10$alreadyhashed", "email@example.com", "Test Name", "Location");
-        
-        when(passwordService.isPasswordHashed("$2a$10$alreadyhashed")).thenReturn(true);
+    public void testSaveUserAlwaysHashesPassword() {
+        // Even a BCrypt-formatted input must be re-hashed to enforce server-side policy
+        String inputPassword = "$2a$10$PT4OkMDKe1nOdEpjlgjDFeXPiLsYWl3eIyIA1A8k0dmH2hSK3QhBC";
+        String rehashed = "$2a$10$newHashResultXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
+        User user = new User("testuser", inputPassword, "email@example.com", "Test Name", "Location");
+        User savedUser = new User("testuser", rehashed, "email@example.com", "Test Name", "Location");
+
+        when(passwordService.hashPassword(inputPassword)).thenReturn(rehashed);
         when(userRepository.save(any(User.class))).thenReturn(savedUser);
 
         User result = userService.saveUserWithHashedPassword(user);
 
         assertNotNull(result);
-        assertEquals("$2a$10$alreadyhashed", result.getPassword());
-        verify(passwordService, never()).hashPassword(anyString());
+        verify(passwordService).hashPassword(inputPassword);
     }
 
     @Test
