@@ -29,7 +29,7 @@ public class User {
     private String location;
 
     @JsonIgnore
-    @Column(name = "date_joined")
+    @Column(name = "date_joined", nullable = false)
     private LocalDate dateJoined;
 
     // Constructors
