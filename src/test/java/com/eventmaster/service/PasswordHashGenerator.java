@@ -1,12 +1,15 @@
 package com.eventmaster.service;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 /**
- * Utility test to generate BCrypt hashes for seed data.
- * Run this test to generate password hashes for schema.sql
+ * Utility to generate BCrypt hashes for seed data.
+ * Not a real test - disabled to prevent running in CI.
+ * Run manually when you need to generate hashes for schema.sql.
  */
+@Disabled("Utility for generating password hashes - not a real test")
 public class PasswordHashGenerator {
 
     @Test

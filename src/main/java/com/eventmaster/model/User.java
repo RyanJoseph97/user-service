@@ -1,12 +1,9 @@
 package com.eventmaster.model;
 import javax.persistence.*;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonProperty.Access;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.time.LocalDate;
-import com.eventmaster.service.PasswordService;
 
 @Entity
 @Table(name = "users")
@@ -20,6 +17,7 @@ public class User {
     @Column(nullable = false, unique = true)
     private String username;
 
+    @JsonProperty(access = Access.WRITE_ONLY)
     @Column(nullable = false)
     private String password;
 
@@ -79,21 +77,6 @@ public class User {
 
     public void setPassword(String password) {
         this.password = password;
-    }
-
-    /**
-     * Set password with automatic hashing using BCrypt.
-     * This method should be used when setting passwords from user input.
-     * 
-     * @param rawPassword the plain text password to hash and store
-     * @param passwordService the PasswordService to use for hashing
-     */
-    public void setHashedPassword(String rawPassword, PasswordService passwordService) {
-        if (rawPassword != null && !rawPassword.trim().isEmpty()) {
-            this.password = passwordService.hashPassword(rawPassword);
-        } else {
-            this.password = null;
-        }
     }
 
     public String getEmail() {

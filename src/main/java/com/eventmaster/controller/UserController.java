@@ -5,8 +5,6 @@ import com.eventmaster.model.LoginResponse;
 import com.eventmaster.service.UserService;
 import com.eventmaster.service.PasswordService;
 import com.eventmaster.jwt.JwtConfig;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -80,11 +78,11 @@ public class UserController {
     }
 
     @PostMapping
-    public User createUser(@RequestBody User user){
+    public ResponseEntity<User> createUser(@RequestBody User user){
         logger.debug("POST request received to create user: {}", user.getUsername());
         User createdUser = userService.saveUserWithHashedPassword(user);
         logger.info("User created successfully with id: {}", createdUser.getId());
-        return createdUser;
+        return ResponseEntity.ok(createdUser);
     }
 
     /**

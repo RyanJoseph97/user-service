@@ -181,14 +181,9 @@ public class UserServiceTest {
     @Test
     public void testSaveUserWithNullPassword() {
         User user = new User("testuser", null, "email@example.com", "Test Name", "Location");
-        User savedUser = new User("testuser", null, "email@example.com", "Test Name", "Location");
-        
-        when(userRepository.save(any(User.class))).thenReturn(savedUser);
 
-        User result = userService.saveUserWithHashedPassword(user);
-
-        assertNotNull(result);
-        assertNull(result.getPassword());
+        assertThrows(IllegalArgumentException.class, () -> userService.saveUserWithHashedPassword(user));
         verify(passwordService, never()).hashPassword(anyString());
+        verify(userRepository, never()).save(any(User.class));
     }
 }

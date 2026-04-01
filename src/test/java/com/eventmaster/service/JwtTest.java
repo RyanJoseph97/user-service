@@ -18,14 +18,11 @@ public class JwtTest {
         String username = "testuser";
 
         String token = jwtConfig.generateToken(username);
-        System.out.println("Generated JWT token: " + token);
 
         String extractedUsername = jwtConfig.extractUsername(token);
         assertEquals(username, extractedUsername, "Extracted username should match original");
 
         assertTrue(jwtConfig.validateToken(token), "Token should be valid");
-
-        System.out.println("JWT token generation and validation tests passed!");
     }
 
     @Test

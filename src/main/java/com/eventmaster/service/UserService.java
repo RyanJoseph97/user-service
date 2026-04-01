@@ -52,19 +52,18 @@ public class UserService {
     public User saveUserWithHashedPassword(User user) {
         logger.info("Attempting to save user with username: {} (password will be hashed)", user.getUsername());
         
-        // Hash the password before saving
-        if (user.getPassword() != null && !user.getPassword().trim().isEmpty()) {
-            // Check if password is already hashed to avoid double-hashing
-            if (!passwordService.isPasswordHashed(user.getPassword())) {
-                user.setHashedPassword(user.getPassword(), passwordService);
-                logger.debug("Password hashed for user: {}", user.getUsername());
-            } else {
-                logger.debug("Password already hashed for user: {}", user.getUsername());
-            }
-        } else {
-            logger.warn("No password provided for user: {}", user.getUsername());
+        if (user.getPassword() == null || user.getPassword().trim().isEmpty()) {
+            throw new IllegalArgumentException("Password must not be null or blank");
         }
-        
+
+        // Check if password is already hashed to avoid double-hashing
+        if (!passwordService.isPasswordHashed(user.getPassword())) {
+            user.setPassword(passwordService.hashPassword(user.getPassword()));
+            logger.debug("Password hashed for user: {}", user.getUsername());
+        } else {
+            logger.debug("Password already hashed for user: {}", user.getUsername());
+        }
+
         return saveUser(user);
     }
 
