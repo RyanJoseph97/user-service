@@ -91,6 +91,10 @@ public class UserController {
     @PostMapping
     public ResponseEntity<User> createUser(@Valid @RequestBody CreateUserRequest request) {
         logger.debug("POST request received to create user: {}", request.getUsername());
+        if (request.getUsername().equals(adminUsername)) {
+            logger.warn("Attempt to register reserved admin username: {}", adminUsername);
+            return ResponseEntity.status(403).build();
+        }
         User user = new User(request.getUsername(), request.getPassword(),
                 request.getEmail(), request.getName(), request.getLocation());
         User createdUser = userService.saveUserWithHashedPassword(user);

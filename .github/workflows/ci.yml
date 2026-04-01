@@ -28,8 +28,14 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
           server-id: github
+          server-username: GITHUB_ACTOR
+          server-password: GITHUB_TOKEN
 
       - name: Build and run unit tests
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET || 'ci-test-secret-not-used-by-unit-tests' }}
         run: mvn --batch-mode --no-transfer-progress verify
 
       - name: Upload test results
@@ -56,6 +62,9 @@ jobs:
           java-version: '11'
           distribution: 'temurin'
           cache: 'maven'
+          server-id: github
+          server-username: GITHUB_ACTOR
+          server-password: GITHUB_TOKEN
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
@@ -63,6 +72,9 @@ jobs:
           languages: java
 
       - name: Build for CodeQL
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: mvn --batch-mode --no-transfer-progress compile -DskipTests
 
       - name: Run CodeQL analysis
