@@ -28,6 +28,7 @@ public class User {
 
     private String location;
 
+    @JsonIgnore
     @Column(name = "date_joined")
     private LocalDate dateJoined;
 

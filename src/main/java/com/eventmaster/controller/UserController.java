@@ -112,7 +112,7 @@ public class UserController {
                     user.getEmail(),
                     user.getName(),
                     user.getLocation(),
-                    user.getDateJoined() != null ? user.getDateJoined().toString() : null
+                    user.getDateJoined().toString()
                 );
                 
                 logger.info("Successful login for user: {}", loginRequest.getUsername());

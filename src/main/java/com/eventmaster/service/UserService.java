@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -56,6 +57,7 @@ public class UserService {
             throw new IllegalArgumentException("Password must not be null or blank");
         }
 
+        user.setDateJoined(LocalDate.now());
         user.setPassword(passwordService.hashPassword(user.getPassword()));
         logger.debug("Password hashed for user: {}", user.getUsername());
 
