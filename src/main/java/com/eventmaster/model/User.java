@@ -32,6 +32,9 @@ public class User {
     @Column(name = "date_joined", nullable = false)
     private LocalDate dateJoined;
 
+    @Column(nullable = false)
+    private boolean verified = false;
+
     // Constructors
     public User() {
         // Default constructor
@@ -110,5 +113,13 @@ public class User {
 
     public void setDateJoined(LocalDate dateJoined) {
         this.dateJoined = dateJoined;
+    }
+
+    public boolean isVerified() {
+        return verified;
+    }
+
+    public void setVerified(boolean verified) {
+        this.verified = verified;
     }
 }

@@ -1,6 +1,5 @@
 package com.eventmaster.controller;
 
-import com.eventmaster.exception.UserNotFoundException;
 import com.eventmaster.model.FollowerSummary;
 import com.eventmaster.service.FollowService;
 import org.slf4j.Logger;
@@ -22,52 +21,23 @@ public class FollowController {
 
     @PostMapping("/{username}/follow")
     public ResponseEntity<Void> follow(@PathVariable String username, Authentication authentication) {
-        String currentUser = authentication.getName();
-        try {
-            followService.follow(currentUser, username);
-            return ResponseEntity.ok().build();
-        } catch (IllegalArgumentException e) {
-            logger.warn("Bad follow request by {}: {}", currentUser, e.getMessage());
-            return ResponseEntity.badRequest().build();
-        } catch (IllegalStateException e) {
-            logger.warn("Conflict on follow by {}: {}", currentUser, e.getMessage());
-            return ResponseEntity.status(409).build();
-        } catch (UserNotFoundException e) {
-            logger.warn("User not found during follow: {}", e.getMessage());
-            return ResponseEntity.notFound().build();
-        }
+        followService.follow(authentication.getName(), username);
+        return ResponseEntity.ok().build();
     }
 
     @DeleteMapping("/{username}/follow")
     public ResponseEntity<Void> unfollow(@PathVariable String username, Authentication authentication) {
-        String currentUser = authentication.getName();
-        try {
-            followService.unfollow(currentUser, username);
-            return ResponseEntity.noContent().build();
-        } catch (IllegalStateException e) {
-            logger.warn("Conflict on unfollow by {}: {}", currentUser, e.getMessage());
-            return ResponseEntity.status(409).build();
-        } catch (UserNotFoundException e) {
-            logger.warn("User not found during unfollow: {}", e.getMessage());
-            return ResponseEntity.notFound().build();
-        }
+        followService.unfollow(authentication.getName(), username);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/{username}/followers")
     public ResponseEntity<List<FollowerSummary>> getFollowers(@PathVariable String username) {
-        try {
-            return ResponseEntity.ok(followService.getFollowers(username));
-        } catch (UserNotFoundException e) {
-            return ResponseEntity.notFound().build();
-        }
+        return ResponseEntity.ok(followService.getFollowers(username));
     }
 
     @GetMapping("/{username}/following")
     public ResponseEntity<List<FollowerSummary>> getFollowing(@PathVariable String username) {
-        try {
-            return ResponseEntity.ok(followService.getFollowing(username));
-        } catch (UserNotFoundException e) {
-            return ResponseEntity.notFound().build();
-        }
+        return ResponseEntity.ok(followService.getFollowing(username));
     }
 }

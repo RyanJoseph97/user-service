@@ -10,6 +10,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
+import com.eventmaster.model.ChangePasswordRequest;
+import com.eventmaster.model.UpdateUserRequest;
+import com.eventmaster.repository.FollowRepository;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -23,6 +26,9 @@ public class UserService {
 
     @Autowired
     private PasswordService passwordService;
+
+    @Autowired
+    private FollowRepository followRepository;
 
     public User saveUser(User user) {
         logger.info("Attempting to save user with username: {}", user.getUsername());
@@ -123,6 +129,39 @@ public class UserService {
             logger.debug("User not found with id: {}", id);
         }
         return user;
+    }
+
+    public User verifyUser(String username) {
+        User user = findByUsername(username);
+        user.setVerified(true);
+        return userRepository.save(user);
+    }
+
+    public User updateUser(String username, UpdateUserRequest request) {
+        User user = findByUsername(username);
+        if (request.getEmail() != null) user.setEmail(request.getEmail());
+        if (request.getName() != null) user.setName(request.getName());
+        if (request.getLocation() != null) user.setLocation(request.getLocation());
+        return saveUser(user);
+    }
+
+    public void changePassword(String username, ChangePasswordRequest request) {
+        User user = findByUsername(username);
+        if (!passwordService.verifyPassword(request.getCurrentPassword(), user.getPassword())) {
+            throw new IllegalArgumentException("Current password is incorrect");
+        }
+        user.setPassword(passwordService.hashPassword(request.getNewPassword()));
+        userRepository.save(user);
+        logger.info("Password changed for user: {}", username);
+    }
+
+    @org.springframework.transaction.annotation.Transactional
+    public void deleteUser(String username) {
+        User user = findByUsername(username);
+        followRepository.deleteByFollower(user);
+        followRepository.deleteByFollowee(user);
+        userRepository.delete(user);
+        logger.info("Deleted user: {}", username);
     }
 
     public List<User> getAllUsers() {

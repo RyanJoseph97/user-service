@@ -1,15 +1,21 @@
 package com.eventmaster.controller;
 
 import com.eventmaster.exception.UserNotFoundException;
+import com.eventmaster.model.ChangePasswordRequest;
+import com.eventmaster.model.CreateUserRequest;
+import com.eventmaster.model.UpdateUserRequest;
 import com.eventmaster.model.User;
 import com.eventmaster.model.LoginResponse;
 import com.eventmaster.service.UserService;
 import com.eventmaster.service.PasswordService;
 import com.eventmaster.jwt.JwtConfig;
+import javax.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -18,6 +24,10 @@ import java.util.List;
 @RequestMapping("/users")
 public class UserController {
     private static final Logger logger = LoggerFactory.getLogger(UserController.class);
+
+    @Value("${admin.username}")
+    private String adminUsername;
+
     private final UserService userService;
     private final PasswordService passwordService;
 
@@ -79,11 +89,52 @@ public class UserController {
     }
 
     @PostMapping
-    public ResponseEntity<User> createUser(@RequestBody User user){
-        logger.debug("POST request received to create user: {}", user.getUsername());
+    public ResponseEntity<User> createUser(@Valid @RequestBody CreateUserRequest request) {
+        logger.debug("POST request received to create user: {}", request.getUsername());
+        User user = new User(request.getUsername(), request.getPassword(),
+                request.getEmail(), request.getName(), request.getLocation());
         User createdUser = userService.saveUserWithHashedPassword(user);
         logger.info("User created successfully with id: {}", createdUser.getId());
         return ResponseEntity.ok(createdUser);
+    }
+
+    @PatchMapping("/{username}/verify")
+    public ResponseEntity<User> verifyUser(@PathVariable String username, Authentication authentication) {
+        if (!authentication.getName().equals(adminUsername)) {
+            return ResponseEntity.status(403).build();
+        }
+        return ResponseEntity.ok(userService.verifyUser(username));
+    }
+
+    @PatchMapping("/{username}")
+    public ResponseEntity<User> updateUser(@PathVariable String username,
+                                           @Valid @RequestBody UpdateUserRequest request,
+                                           Authentication authentication) {
+        if (!authentication.getName().equals(username)) {
+            return ResponseEntity.status(403).build();
+        }
+        return ResponseEntity.ok(userService.updateUser(username, request));
+    }
+
+    @PatchMapping("/{username}/password")
+    public ResponseEntity<Void> changePassword(@PathVariable String username,
+                                               @Valid @RequestBody ChangePasswordRequest request,
+                                               Authentication authentication) {
+        if (!authentication.getName().equals(username)) {
+            return ResponseEntity.status(403).build();
+        }
+        userService.changePassword(username, request);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/{username}")
+    public ResponseEntity<Void> deleteUser(@PathVariable String username,
+                                           Authentication authentication) {
+        if (!authentication.getName().equals(username)) {
+            return ResponseEntity.status(403).build();
+        }
+        userService.deleteUser(username);
+        return ResponseEntity.noContent().build();
     }
 
     /**
