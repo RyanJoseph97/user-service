@@ -1,10 +1,14 @@
 import com.eventmaster.exception.DuplicateUserException;
+import com.eventmaster.model.ChangePasswordRequest;
+import com.eventmaster.model.UpdateUserRequest;
 import com.eventmaster.model.User;
+import com.eventmaster.repository.FollowRepository;
 import com.eventmaster.repository.UserRepository;
 import com.eventmaster.service.UserService;
 import com.eventmaster.service.PasswordService;
 import com.eventmaster.exception.UserNotFoundException;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -14,6 +18,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.*;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.test.util.ReflectionTestUtils;
 
 
 public class UserServiceTest {
@@ -143,6 +148,9 @@ public class UserServiceTest {
         assertEquals(user.getUsername(), user_ret.getUsername());
     }
 
+    @Mock
+    private FollowRepository followRepository;
+
     // Password hashing tests
     @Mock
     private PasswordService passwordService;
@@ -187,5 +195,127 @@ public class UserServiceTest {
         assertThrows(IllegalArgumentException.class, () -> userService.saveUserWithHashedPassword(user));
         verify(passwordService, never()).hashPassword(anyString());
         verify(userRepository, never()).save(any(User.class));
+    }
+
+    // --- verifyUser ---
+
+    @Test
+    public void testVerifyUser_setsVerifiedTrue() {
+        User user = new User(username, "hashedpw", "test@example.com", "Test", "Location");
+        assertFalse(user.isVerified());
+
+        when(userRepository.findByUsername(username)).thenReturn(Optional.of(user));
+        when(userRepository.save(user)).thenReturn(user);
+
+        User result = userService.verifyUser(username);
+
+        assertTrue(result.isVerified());
+        verify(userRepository).save(user);
+    }
+
+    @Test
+    public void testVerifyUser_userNotFound_throws() {
+        when(userRepository.findByUsername("ghost")).thenReturn(Optional.empty());
+
+        assertThrows(UserNotFoundException.class, () -> userService.verifyUser("ghost"));
+    }
+
+    // --- updateUser ---
+
+    @Test
+    public void testUpdateUser_updatesProvidedFields() {
+        User user = new User(username, "hashedpw", "old@example.com", "Old Name", "Old City");
+        when(userRepository.findByUsername(username)).thenReturn(Optional.of(user));
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateUserRequest request = new UpdateUserRequest();
+        ReflectionTestUtils.setField(request, "email", "new@example.com");
+        ReflectionTestUtils.setField(request, "name", "New Name");
+        ReflectionTestUtils.setField(request, "location", null);
+
+        User result = userService.updateUser(username, request);
+
+        assertEquals("new@example.com", result.getEmail());
+        assertEquals("New Name", result.getName());
+        assertEquals("Old City", result.getLocation()); // unchanged
+    }
+
+    @Test
+    public void testUpdateUser_userNotFound_throws() {
+        when(userRepository.findByUsername("ghost")).thenReturn(Optional.empty());
+
+        assertThrows(UserNotFoundException.class,
+                () -> userService.updateUser("ghost", new UpdateUserRequest()));
+    }
+
+    // --- changePassword ---
+
+    @Test
+    public void testChangePassword_success() {
+        User user = new User(username, "hashedOld", "test@example.com", "Test", "Location");
+        when(userRepository.findByUsername(username)).thenReturn(Optional.of(user));
+        when(passwordService.verifyPassword("oldPlain", "hashedOld")).thenReturn(true);
+        when(passwordService.hashPassword("newPlain12")).thenReturn("hashedNew");
+
+        ChangePasswordRequest request = new ChangePasswordRequest();
+        ReflectionTestUtils.setField(request, "currentPassword", "oldPlain");
+        ReflectionTestUtils.setField(request, "newPassword", "newPlain12");
+
+        userService.changePassword(username, request);
+
+        assertEquals("hashedNew", user.getPassword());
+        verify(userRepository).save(user);
+    }
+
+    @Test
+    public void testChangePassword_wrongCurrentPassword_throws() {
+        User user = new User(username, "hashedOld", "test@example.com", "Test", "Location");
+        when(userRepository.findByUsername(username)).thenReturn(Optional.of(user));
+        when(passwordService.verifyPassword("wrongPlain", "hashedOld")).thenReturn(false);
+
+        ChangePasswordRequest request = new ChangePasswordRequest();
+        ReflectionTestUtils.setField(request, "currentPassword", "wrongPlain");
+        ReflectionTestUtils.setField(request, "newPassword", "newPlain12");
+
+        assertThrows(IllegalArgumentException.class,
+                () -> userService.changePassword(username, request));
+
+        verify(userRepository, never()).save(any());
+    }
+
+    // --- deleteUser ---
+
+    @Test
+    public void testDeleteUser_cascadesFollowsAndDeletesUser() {
+        User user = new User(username, "hashedpw", "test@example.com", "Test", "Location");
+        when(userRepository.findByUsername(username)).thenReturn(Optional.of(user));
+
+        userService.deleteUser(username);
+
+        verify(followRepository).deleteByFollower(user);
+        verify(followRepository).deleteByFollowee(user);
+        verify(userRepository).delete(user);
+    }
+
+    @Test
+    public void testDeleteUser_userNotFound_throws() {
+        when(userRepository.findByUsername("ghost")).thenReturn(Optional.empty());
+
+        assertThrows(UserNotFoundException.class, () -> userService.deleteUser("ghost"));
+    }
+
+    // --- getAllUsers ---
+
+    @Test
+    public void testGetAllUsers_returnsAll() {
+        List<User> users = List.of(
+                new User("user1", "pw", "u1@example.com", "User One", ""),
+                new User("user2", "pw", "u2@example.com", "User Two", "")
+        );
+        when(userRepository.findAll()).thenReturn(users);
+
+        List<User> result = userService.getAllUsers();
+
+        assertEquals(2, result.size());
     }
 }

@@ -14,6 +14,7 @@ A Spring Boot microservice for managing user accounts in the EventMaster applica
 - [Project Structure](#project-structure)
 - [Running Tests](#running-tests)
 - [Building and Deployment](#building-and-deployment)
+- [CI/CD Pipeline](#cicd-pipeline)
 
 ## Features
 
@@ -425,4 +426,62 @@ See LICENSE file for details.
 ## Support
 
 For issues or questions, please contact the development team.
+
+## CI/CD Pipeline
+
+The repository uses **GitHub Actions** for continuous integration and automated security checks. The pipeline is defined in [`.github/workflows/ci.yml`](.github/workflows/ci.yml) and runs on every push to `master` and on every pull request targeting `master`.
+
+### Pipeline Jobs
+
+| Job | Trigger | Description |
+|-----|---------|-------------|
+| **Build & Test** | push / PR | Compiles the project with Maven and runs all unit tests |
+| **CodeQL Analysis** | push / PR | Static application security testing (SAST) via GitHub's CodeQL engine |
+| **Dependency Review** | PR only | Checks newly introduced or updated dependencies for known CVEs |
+
+#### Build & Test
+
+1. Checks out the source code.
+2. Sets up Java 11 (Eclipse Temurin) with **Maven dependency caching** to speed up repeated runs.
+3. Runs `mvn verify`, which compiles the code, executes all JUnit tests, and packages the JAR.
+4. Uploads Surefire test reports as a build artifact (kept for 7 days).
+
+#### CodeQL Analysis
+
+Performs static analysis on the Java source to detect common vulnerability classes (SQL injection, XSS, etc.). Results are uploaded to the **GitHub Security** tab. The job depends on `build-and-test` so it only runs when the build is green.
+
+#### Dependency Review
+
+Runs only on pull requests. Compares the dependency manifest before and after the change and fails the PR if any new dependency introduces a known vulnerability listed in the [GitHub Advisory Database](https://github.com/advisories).
+
+### Automated Dependency Updates (Dependabot)
+
+[`.github/dependabot.yml`](.github/dependabot.yml) configures Dependabot to open weekly pull requests for:
+
+- **Maven** dependencies (e.g. Spring Boot, Jackson)
+- **GitHub Actions** used in the workflow files
+
+### Secret Scanning
+
+GitHub Advanced Security **secret scanning** is enabled at the repository level and runs automatically on every push. No additional configuration is required.
+
+### Running Pipeline Checks Locally
+
+Run the same checks that the CI pipeline performs before pushing:
+
+```bash
+# Compile and run all unit tests (mirrors the "Build & Test" job)
+mvn --batch-mode verify
+
+# Run tests only (faster feedback loop)
+mvn --batch-mode test
+
+# Run a single test class
+mvn --batch-mode test -Dtest=UserServiceTest
+
+# Generate a test coverage report (requires JaCoCo, optional)
+mvn --batch-mode test jacoco:report
+```
+
+> **Tip:** Adding `--no-transfer-progress` suppresses Maven download progress lines for cleaner terminal output.
 
