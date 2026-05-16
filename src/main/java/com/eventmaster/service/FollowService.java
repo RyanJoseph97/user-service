@@ -7,6 +7,8 @@ import com.eventmaster.repository.FollowRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -53,23 +55,21 @@ public class FollowService {
         logger.info("{} unfollowed {}", followerUsername, followeeUsername);
     }
 
-    public List<FollowerSummary> getFollowers(String username) {
+    public Page<FollowerSummary> getFollowers(String username, Pageable pageable) {
         User user = userService.findByUsername(username);
-        return followRepository.findByFollowee(user).stream()
+        return followRepository.findByFollowee(user, pageable)
                 .map(f -> new FollowerSummary(
                         f.getFollower().getUsername(),
                         f.getFollower().getName(),
-                        f.getFollower().getDateJoined()))
-                .collect(Collectors.toList());
+                        f.getFollower().getDateJoined()));
     }
 
-    public List<FollowerSummary> getFollowing(String username) {
+    public Page<FollowerSummary> getFollowing(String username, Pageable pageable) {
         User user = userService.findByUsername(username);
-        return followRepository.findByFollower(user).stream()
+        return followRepository.findByFollower(user, pageable)
                 .map(f -> new FollowerSummary(
                         f.getFollowee().getUsername(),
                         f.getFollowee().getName(),
-                        f.getFollowee().getDateJoined()))
-                .collect(Collectors.toList());
+                        f.getFollowee().getDateJoined()));
     }
 }

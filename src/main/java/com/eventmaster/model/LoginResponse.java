@@ -10,16 +10,19 @@ public class LoginResponse {
     private String name;
     private String location;
     private String dateJoined;
+    private String accountStatus;
 
     public LoginResponse() {}
 
-    public LoginResponse(String token, String username, String email, String name, String location, String dateJoined) {
+    public LoginResponse(String token, String username, String email, String name,
+                         String location, String dateJoined, String accountStatus) {
         this.token = token;
         this.username = username;
         this.email = email;
         this.name = name;
         this.location = location;
         this.dateJoined = dateJoined;
+        this.accountStatus = accountStatus;
     }
 
     // Getters and setters
@@ -69,5 +72,13 @@ public class LoginResponse {
 
     public void setDateJoined(String dateJoined) {
         this.dateJoined = dateJoined;
+    }
+
+    public String getAccountStatus() {
+        return accountStatus;
+    }
+
+    public void setAccountStatus(String accountStatus) {
+        this.accountStatus = accountStatus;
     }
 }

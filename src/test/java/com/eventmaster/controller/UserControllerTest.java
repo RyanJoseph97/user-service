@@ -70,13 +70,13 @@ public class UserControllerTest {
     @Test
     public void verifyUser_asAdmin_returns200() throws Exception {
         User user = new User("someuser", "pw", "s@example.com", "Some User", "");
-        user.setVerified(true);
+        user.setAccountStatus(com.eventmaster.model.AccountStatus.VERIFIED);
         when(userService.verifyUser("someuser")).thenReturn(user);
 
         mockMvc.perform(patch("/users/someuser/verify").with(auth("admin")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.username").value("someuser"))
-                .andExpect(jsonPath("$.verified").value(true));
+                .andExpect(jsonPath("$.accountStatus").value("VERIFIED"));
     }
 
     @Test

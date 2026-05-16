@@ -3,11 +3,12 @@ package com.eventmaster.controller;
 import com.eventmaster.model.FollowerSummary;
 import com.eventmaster.service.FollowService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/users")
@@ -29,12 +30,14 @@ public class FollowController {
     }
 
     @GetMapping("/{username}/followers")
-    public ResponseEntity<List<FollowerSummary>> getFollowers(@PathVariable String username) {
-        return ResponseEntity.ok(followService.getFollowers(username));
+    public ResponseEntity<Page<FollowerSummary>> getFollowers(@PathVariable String username,
+                                                               @PageableDefault(size = 20) Pageable pageable) {
+        return ResponseEntity.ok(followService.getFollowers(username, pageable));
     }
 
     @GetMapping("/{username}/following")
-    public ResponseEntity<List<FollowerSummary>> getFollowing(@PathVariable String username) {
-        return ResponseEntity.ok(followService.getFollowing(username));
+    public ResponseEntity<Page<FollowerSummary>> getFollowing(@PathVariable String username,
+                                                               @PageableDefault(size = 20) Pageable pageable) {
+        return ResponseEntity.ok(followService.getFollowing(username, pageable));
     }
 }

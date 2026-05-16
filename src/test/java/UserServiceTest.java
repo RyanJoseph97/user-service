@@ -10,6 +10,9 @@ import com.eventmaster.exception.UserNotFoundException;
 
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -202,14 +205,14 @@ public class UserServiceTest {
     @Test
     public void testVerifyUser_setsVerifiedTrue() {
         User user = new User(username, "hashedpw", "test@example.com", "Test", "Location");
-        assertFalse(user.isVerified());
+        assertEquals(com.eventmaster.model.AccountStatus.UNVERIFIED, user.getAccountStatus());
 
         when(userRepository.findByUsername(username)).thenReturn(Optional.of(user));
         when(userRepository.save(user)).thenReturn(user);
 
         User result = userService.verifyUser(username);
 
-        assertTrue(result.isVerified());
+        assertEquals(com.eventmaster.model.AccountStatus.VERIFIED, result.getAccountStatus());
         verify(userRepository).save(user);
     }
 
@@ -312,10 +315,10 @@ public class UserServiceTest {
                 new User("user1", "pw", "u1@example.com", "User One", ""),
                 new User("user2", "pw", "u2@example.com", "User Two", "")
         );
-        when(userRepository.findAll()).thenReturn(users);
+        when(userRepository.findAll(Pageable.unpaged())).thenReturn(new PageImpl<>(users));
 
-        List<User> result = userService.getAllUsers();
+        Page<User> result = userService.getAllUsers(Pageable.unpaged());
 
-        assertEquals(2, result.size());
+        assertEquals(2, result.getTotalElements());
     }
 }

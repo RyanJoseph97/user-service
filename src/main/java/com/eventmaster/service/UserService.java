@@ -10,12 +10,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
+import com.eventmaster.model.AccountStatus;
 import com.eventmaster.model.ChangePasswordRequest;
 import com.eventmaster.model.UpdateUserRequest;
 import com.eventmaster.repository.FollowRepository;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 @Service
 public class UserService {
@@ -133,7 +136,7 @@ public class UserService {
 
     public User verifyUser(String username) {
         User user = findByUsername(username);
-        user.setVerified(true);
+        user.setAccountStatus(AccountStatus.VERIFIED);
         return userRepository.save(user);
     }
 
@@ -164,10 +167,10 @@ public class UserService {
         logger.info("Deleted user: {}", username);
     }
 
-    public List<User> getAllUsers() {
+    public Page<User> getAllUsers(Pageable pageable) {
         logger.debug("Fetching all users");
-        List<User> users = userRepository.findAll();
-        logger.info("Retrieved {} users from database", users.size());
+        Page<User> users = userRepository.findAll(pageable);
+        logger.info("Retrieved {} users from database", users.getTotalElements());
         return users;
     }
 }

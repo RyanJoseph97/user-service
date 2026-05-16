@@ -12,6 +12,9 @@ import org.mockito.*;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -122,22 +125,22 @@ public class FollowServiceTest {
         Follow follow = new Follow(alice, bob);
 
         when(userService.findByUsername("bob")).thenReturn(bob);
-        when(followRepository.findByFollowee(bob)).thenReturn(List.of(follow));
+        when(followRepository.findByFollowee(bob, Pageable.unpaged())).thenReturn(new PageImpl<>(List.of(follow)));
 
-        List<FollowerSummary> result = followService.getFollowers("bob");
+        Page<FollowerSummary> result = followService.getFollowers("bob", Pageable.unpaged());
 
-        assertEquals(1, result.size());
-        assertEquals("alice", result.get(0).getUsername());
-        assertEquals("Alice", result.get(0).getName());
-        assertEquals(LocalDate.of(2024, 1, 1), result.get(0).getDateJoined());
+        assertEquals(1, result.getTotalElements());
+        assertEquals("alice", result.getContent().get(0).getUsername());
+        assertEquals("Alice", result.getContent().get(0).getName());
+        assertEquals(LocalDate.of(2024, 1, 1), result.getContent().get(0).getDateJoined());
     }
 
     @Test
     public void getFollowers_noFollowers_returnsEmptyList() {
         when(userService.findByUsername("bob")).thenReturn(bob);
-        when(followRepository.findByFollowee(bob)).thenReturn(List.of());
+        when(followRepository.findByFollowee(bob, Pageable.unpaged())).thenReturn(Page.empty());
 
-        List<FollowerSummary> result = followService.getFollowers("bob");
+        Page<FollowerSummary> result = followService.getFollowers("bob", Pageable.unpaged());
 
         assertTrue(result.isEmpty());
     }
@@ -150,22 +153,22 @@ public class FollowServiceTest {
         Follow follow = new Follow(alice, bob);
 
         when(userService.findByUsername("alice")).thenReturn(alice);
-        when(followRepository.findByFollower(alice)).thenReturn(List.of(follow));
+        when(followRepository.findByFollower(alice, Pageable.unpaged())).thenReturn(new PageImpl<>(List.of(follow)));
 
-        List<FollowerSummary> result = followService.getFollowing("alice");
+        Page<FollowerSummary> result = followService.getFollowing("alice", Pageable.unpaged());
 
-        assertEquals(1, result.size());
-        assertEquals("bob", result.get(0).getUsername());
-        assertEquals("Bob", result.get(0).getName());
-        assertEquals(LocalDate.of(2024, 6, 15), result.get(0).getDateJoined());
+        assertEquals(1, result.getTotalElements());
+        assertEquals("bob", result.getContent().get(0).getUsername());
+        assertEquals("Bob", result.getContent().get(0).getName());
+        assertEquals(LocalDate.of(2024, 6, 15), result.getContent().get(0).getDateJoined());
     }
 
     @Test
     public void getFollowing_notFollowingAnyone_returnsEmptyList() {
         when(userService.findByUsername("alice")).thenReturn(alice);
-        when(followRepository.findByFollower(alice)).thenReturn(List.of());
+        when(followRepository.findByFollower(alice, Pageable.unpaged())).thenReturn(Page.empty());
 
-        List<FollowerSummary> result = followService.getFollowing("alice");
+        Page<FollowerSummary> result = followService.getFollowing("alice", Pageable.unpaged());
 
         assertTrue(result.isEmpty());
     }

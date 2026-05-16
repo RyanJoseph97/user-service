@@ -32,8 +32,9 @@ public class User {
     @Column(name = "date_joined", nullable = false)
     private LocalDate dateJoined;
 
-    @Column(nullable = false)
-    private boolean verified = false;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "account_status", nullable = false)
+    private AccountStatus accountStatus = AccountStatus.UNVERIFIED;
 
     // Constructors
     public User() {
@@ -115,11 +116,11 @@ public class User {
         this.dateJoined = dateJoined;
     }
 
-    public boolean isVerified() {
-        return verified;
+    public AccountStatus getAccountStatus() {
+        return accountStatus;
     }
 
-    public void setVerified(boolean verified) {
-        this.verified = verified;
+    public void setAccountStatus(AccountStatus accountStatus) {
+        this.accountStatus = accountStatus;
     }
 }

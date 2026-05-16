@@ -14,11 +14,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/users")
@@ -81,10 +86,10 @@ public class UserController {
     }
 
     @GetMapping
-    public ResponseEntity<List<User>> getAllUsers() {
+    public ResponseEntity<Page<User>> getAllUsers(@PageableDefault(size = 20) Pageable pageable) {
         logger.debug("GET request received to fetch all users");
-        List<User> users = userService.getAllUsers();
-        logger.info("Returning {} users", users.size());
+        Page<User> users = userService.getAllUsers(pageable);
+        logger.info("Returning {} users", users.getTotalElements());
         return ResponseEntity.ok(users);
     }
 
@@ -157,9 +162,12 @@ public class UserController {
             
             // Verify password using the PasswordService
             if (passwordService.verifyPassword(loginRequest.getPassword(), user.getPassword())) {
-                // Generate JWT token
-                String jwtToken = jwtConfig.generateToken(user.getUsername());
-                
+                // Embed accountStatus in the token so downstream services can
+                // authorise without calling back to user-service.
+                Map<String, Object> claims = new HashMap<>();
+                claims.put("accountStatus", user.getAccountStatus().name());
+                String jwtToken = jwtConfig.generateToken(user.getUsername(), claims);
+
                 // Create login response with token and user info
                 LoginResponse loginResponse = new LoginResponse(
                     jwtToken,
@@ -167,7 +175,8 @@ public class UserController {
                     user.getEmail(),
                     user.getName(),
                     user.getLocation(),
-                    user.getDateJoined().toString()
+                    user.getDateJoined().toString(),
+                    user.getAccountStatus().name()
                 );
                 
                 logger.info("Successful login for user: {}", loginRequest.getUsername());
