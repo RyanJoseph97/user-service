@@ -93,6 +93,13 @@ public class UserController {
         return ResponseEntity.ok(users);
     }
 
+    @GetMapping("/search")
+    public ResponseEntity<List<User>> searchUsers(@RequestParam String q,
+                                                  @PageableDefault(size = 20) Pageable pageable) {
+        logger.debug("GET /users/search q={}", q);
+        return ResponseEntity.ok(userService.searchUsers(q, pageable));
+    }
+
     @PostMapping
     public ResponseEntity<User> createUser(@Valid @RequestBody CreateUserRequest request) {
         logger.debug("POST request received to create user: {}", request.getUsername());

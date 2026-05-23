@@ -173,4 +173,9 @@ public class UserService {
         logger.info("Retrieved {} users from database", users.getTotalElements());
         return users;
     }
+
+    public List<User> searchUsers(String q, Pageable pageable) {
+        logger.debug("Searching users with query: {}", q);
+        return userRepository.findByUsernameContainingIgnoreCaseOrNameContainingIgnoreCase(q, q, pageable).getContent();
+    }
 }
