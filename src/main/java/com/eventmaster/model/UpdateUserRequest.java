@@ -14,6 +14,8 @@ public class UpdateUserRequest {
     @Size(max = 100, message = "Location must not exceed 100 characters")
     private String location;
 
+    private Boolean privateProfile;
+
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
 
@@ -22,4 +24,7 @@ public class UpdateUserRequest {
 
     public String getLocation() { return location; }
     public void setLocation(String location) { this.location = location; }
+
+    public Boolean getPrivateProfile() { return privateProfile; }
+    public void setPrivateProfile(Boolean privateProfile) { this.privateProfile = privateProfile; }
 }

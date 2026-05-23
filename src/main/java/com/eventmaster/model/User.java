@@ -36,6 +36,9 @@ public class User {
     @Column(name = "account_status", nullable = false)
     private AccountStatus accountStatus = AccountStatus.UNVERIFIED;
 
+    @Column(name = "private_profile", nullable = false)
+    private boolean privateProfile = false;
+
     // Constructors
     public User() {
         // Default constructor
@@ -122,5 +125,13 @@ public class User {
 
     public void setAccountStatus(AccountStatus accountStatus) {
         this.accountStatus = accountStatus;
+    }
+
+    public boolean isPrivateProfile() {
+        return privateProfile;
+    }
+
+    public void setPrivateProfile(boolean privateProfile) {
+        this.privateProfile = privateProfile;
     }
 }

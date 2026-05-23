@@ -14,6 +14,7 @@ import com.eventmaster.model.AccountStatus;
 import com.eventmaster.model.ChangePasswordRequest;
 import com.eventmaster.model.UpdateUserRequest;
 import com.eventmaster.repository.FollowRepository;
+import com.eventmaster.repository.FollowRequestRepository;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -32,6 +33,9 @@ public class UserService {
 
     @Autowired
     private FollowRepository followRepository;
+
+    @Autowired
+    private FollowRequestRepository followRequestRepository;
 
     public User saveUser(User user) {
         logger.info("Attempting to save user with username: {}", user.getUsername());
@@ -145,6 +149,7 @@ public class UserService {
         if (request.getEmail() != null) user.setEmail(request.getEmail());
         if (request.getName() != null) user.setName(request.getName());
         if (request.getLocation() != null) user.setLocation(request.getLocation());
+        if (request.getPrivateProfile() != null) user.setPrivateProfile(request.getPrivateProfile());
         return saveUser(user);
     }
 
@@ -163,6 +168,8 @@ public class UserService {
         User user = findByUsername(username);
         followRepository.deleteByFollower(user);
         followRepository.deleteByFollowee(user);
+        followRequestRepository.deleteByRequesterUsername(username);
+        followRequestRepository.deleteByTargetUsername(username);
         userRepository.delete(user);
         logger.info("Deleted user: {}", username);
     }

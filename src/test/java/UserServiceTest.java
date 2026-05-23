@@ -3,6 +3,7 @@ import com.eventmaster.model.ChangePasswordRequest;
 import com.eventmaster.model.UpdateUserRequest;
 import com.eventmaster.model.User;
 import com.eventmaster.repository.FollowRepository;
+import com.eventmaster.repository.FollowRequestRepository;
 import com.eventmaster.repository.UserRepository;
 import com.eventmaster.service.UserService;
 import com.eventmaster.service.PasswordService;
@@ -29,6 +30,12 @@ public class UserServiceTest {
     private static final String testemail = "testemail";
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private FollowRepository followRepository;
+
+    @Mock
+    private FollowRequestRepository followRequestRepository;
 
     @InjectMocks
     private UserService userService;
@@ -150,9 +157,6 @@ public class UserServiceTest {
         assertEquals(email, user_ret.getEmail());
         assertEquals(user.getUsername(), user_ret.getUsername());
     }
-
-    @Mock
-    private FollowRepository followRepository;
 
     // Password hashing tests
     @Mock
@@ -297,6 +301,8 @@ public class UserServiceTest {
 
         verify(followRepository).deleteByFollower(user);
         verify(followRepository).deleteByFollowee(user);
+        verify(followRequestRepository).deleteByRequesterUsername(username);
+        verify(followRequestRepository).deleteByTargetUsername(username);
         verify(userRepository).delete(user);
     }
 

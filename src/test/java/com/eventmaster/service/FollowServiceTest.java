@@ -2,9 +2,11 @@ package com.eventmaster.service;
 
 import com.eventmaster.exception.UserNotFoundException;
 import com.eventmaster.model.Follow;
+import com.eventmaster.model.FollowRequestStatus;
 import com.eventmaster.model.FollowerSummary;
 import com.eventmaster.model.User;
 import com.eventmaster.repository.FollowRepository;
+import com.eventmaster.repository.FollowRequestRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.*;
@@ -23,6 +25,9 @@ public class FollowServiceTest {
 
     @Mock
     private FollowRepository followRepository;
+
+    @Mock
+    private FollowRequestRepository followRequestRepository;
 
     @Mock
     private UserService userService;
@@ -86,24 +91,43 @@ public class FollowServiceTest {
         when(userService.findByUsername("alice")).thenReturn(alice);
         when(userService.findByUsername("bob")).thenReturn(bob);
         when(followRepository.existsByFollowerAndFollowee(alice, bob)).thenReturn(false);
+        // bob is public (default), so follow goes through immediately
 
-        followService.follow("alice", "bob");
+        boolean immediate = followService.follow("alice", "bob");
 
+        assertTrue(immediate);
         verify(followRepository).save(any(Follow.class));
+    }
+
+    @Test
+    public void follow_privateProfile_createsRequest() {
+        bob.setPrivateProfile(true);
+        when(userService.findByUsername("alice")).thenReturn(alice);
+        when(userService.findByUsername("bob")).thenReturn(bob);
+        when(followRepository.existsByFollowerAndFollowee(alice, bob)).thenReturn(false);
+        when(followRequestRepository.existsByRequesterUsernameAndTargetUsernameAndStatus(
+                "alice", "bob", FollowRequestStatus.PENDING)).thenReturn(false);
+
+        boolean immediate = followService.follow("alice", "bob");
+
+        assertFalse(immediate);
+        verify(followRepository, never()).save(any(Follow.class));
+        verify(followRequestRepository).save(any());
     }
 
     // --- unfollow ---
 
     @Test
-    public void unfollow_notFollowing_throwsIllegalState() {
+    public void unfollow_notFollowing_noopAndCancelsRequest() {
         when(userService.findByUsername("alice")).thenReturn(alice);
         when(userService.findByUsername("bob")).thenReturn(bob);
         when(followRepository.existsByFollowerAndFollowee(alice, bob)).thenReturn(false);
 
-        assertThrows(IllegalStateException.class,
-                () -> followService.unfollow("alice", "bob"));
+        // Should not throw — silently no-ops and cancels any pending request
+        followService.unfollow("alice", "bob");
 
         verify(followRepository, never()).deleteByFollowerAndFollowee(any(), any());
+        verify(followRequestRepository).deleteByRequesterUsernameAndTargetUsername("alice", "bob");
     }
 
     @Test
@@ -115,6 +139,7 @@ public class FollowServiceTest {
         followService.unfollow("alice", "bob");
 
         verify(followRepository).deleteByFollowerAndFollowee(alice, bob);
+        verify(followRequestRepository).deleteByRequesterUsernameAndTargetUsername("alice", "bob");
     }
 
     // --- getFollowers ---
