@@ -150,6 +150,7 @@ public class UserService {
         if (request.getName() != null) user.setName(request.getName());
         if (request.getLocation() != null) user.setLocation(request.getLocation());
         if (request.getPrivateProfile() != null) user.setPrivateProfile(request.getPrivateProfile());
+        if (request.getProfilePictureUrl() != null) user.setProfilePictureUrl(request.getProfilePictureUrl());
         return saveUser(user);
     }
 

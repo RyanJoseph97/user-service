@@ -16,6 +16,8 @@ public class UpdateUserRequest {
 
     private Boolean privateProfile;
 
+    private String profilePictureUrl;
+
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
 
@@ -27,4 +29,7 @@ public class UpdateUserRequest {
 
     public Boolean getPrivateProfile() { return privateProfile; }
     public void setPrivateProfile(Boolean privateProfile) { this.privateProfile = privateProfile; }
+
+    public String getProfilePictureUrl() { return profilePictureUrl; }
+    public void setProfilePictureUrl(String profilePictureUrl) { this.profilePictureUrl = profilePictureUrl; }
 }
