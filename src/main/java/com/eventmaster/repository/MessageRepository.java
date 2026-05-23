@@ -16,9 +16,8 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
            "FROM Message m WHERE m.senderUsername = :username OR m.recipientUsername = :username")
     List<String> findConversationPartners(@Param("username") String username);
 
-    @Query("SELECT m FROM Message m WHERE " +
-           "((m.senderUsername = :a AND m.recipientUsername = :b) OR (m.senderUsername = :b AND m.recipientUsername = :a)) " +
-           "ORDER BY m.sentAt DESC LIMIT 1")
+    @Query(value = "SELECT * FROM messages WHERE (sender_username = :a AND recipient_username = :b) OR (sender_username = :b AND recipient_username = :a) ORDER BY sent_at DESC LIMIT 1",
+           nativeQuery = true)
     Message findLastMessageInThread(@Param("a") String a, @Param("b") String b);
 
     long countByRecipientUsernameAndSenderUsernameAndReadAtIsNull(String recipientUsername, String senderUsername);
