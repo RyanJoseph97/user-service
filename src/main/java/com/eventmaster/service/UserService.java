@@ -16,7 +16,9 @@ import com.eventmaster.model.UpdateUserRequest;
 import com.eventmaster.repository.FollowRepository;
 import com.eventmaster.repository.FollowRequestRepository;
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -151,6 +153,8 @@ public class UserService {
         if (request.getLocation() != null) user.setLocation(request.getLocation());
         if (request.getPrivateProfile() != null) user.setPrivateProfile(request.getPrivateProfile());
         if (request.getProfilePictureUrl() != null) user.setProfilePictureUrl(request.getProfilePictureUrl());
+        if (request.getLatitude() != null) user.setLatitude(request.getLatitude());
+        if (request.getLongitude() != null) user.setLongitude(request.getLongitude());
         return saveUser(user);
     }
 
@@ -182,8 +186,16 @@ public class UserService {
         return users;
     }
 
-    public List<User> searchUsers(String q, Pageable pageable) {
+    public List<User> searchUsers(String q) {
         logger.debug("Searching users with query: {}", q);
-        return userRepository.findByUsernameContainingIgnoreCaseOrNameContainingIgnoreCase(q, q, pageable).getContent();
+        return userRepository.findByUsernameContainingIgnoreCaseOrNameContainingIgnoreCase(
+                q, q, org.springframework.data.domain.PageRequest.of(0, 20)).getContent();
+    }
+
+    public Map<String, String> findProfilePictureUrlsByUsernames(List<String> usernames) {
+        Map<String, String> result = new HashMap<>();
+        userRepository.findByUsernameIn(usernames)
+                .forEach(u -> result.put(u.getUsername(), u.getProfilePictureUrl()));
+        return result;
     }
 }

@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -47,14 +48,15 @@ public class MessageService {
     }
 
     public List<ConversationSummary> getConversations(String username) {
-        List<String> partners = messageRepository.findConversationPartners(username);
+        List<String> partners = messageRepository.findConversationPartners(username).stream()
+                .distinct().collect(Collectors.toList());
+        Map<String, String> profilePics = userService.findProfilePictureUrlsByUsernames(partners);
         return partners.stream()
-                .distinct()
                 .map(partner -> {
                     Message last = messageRepository.findLastMessageInThread(username, partner);
                     long unread = messageRepository
                             .countByRecipientUsernameAndSenderUsernameAndReadAtIsNull(username, partner);
-                    return new ConversationSummary(partner, last.getContent(), last.getSentAt(), unread);
+                    return new ConversationSummary(partner, profilePics.get(partner), last.getContent(), last.getSentAt(), unread);
                 })
                 .sorted(Comparator.comparing(ConversationSummary::getLastMessageAt).reversed())
                 .collect(Collectors.toList());

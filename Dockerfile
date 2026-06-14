@@ -1,11 +1,15 @@
 FROM maven:3.9-eclipse-temurin-11 AS build
 WORKDIR /build
 ARG GITHUB_TOKEN
-RUN mkdir -p /root/.m2 && \
-    echo "<settings><servers><server><id>github</id><username>token</username><password>${GITHUB_TOKEN}</password></server></servers></settings>" \
-    > /root/.m2/settings.xml
+# Write settings.xml for dependency resolution, download deps, then delete in the same
+# layer so the token never persists in an image layer or shows up in build history.
 COPY pom.xml .
-RUN mvn dependency:go-offline -q
+RUN mkdir -p /root/.m2 && \
+    printf '<settings><servers><server><id>github</id><username>token</username><password>%s</password></server></servers></settings>\n' \
+        "$GITHUB_TOKEN" > /root/.m2/settings.xml && \
+    mvn dependency:go-offline -q && \
+    rm -f /root/.m2/settings.xml
+# Source is copied after dep download so source-only changes skip the download layer
 COPY src ./src
 RUN mvn package -DskipTests -q
 

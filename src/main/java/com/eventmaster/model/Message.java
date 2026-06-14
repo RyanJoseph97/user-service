@@ -4,7 +4,10 @@ import javax.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "messages")
+@Table(name = "messages", indexes = {
+        @Index(name = "idx_message_sender_recipient", columnList = "sender_username, recipient_username"),
+        @Index(name = "idx_message_recipient_username", columnList = "recipient_username")
+})
 public class Message {
 
     @Id

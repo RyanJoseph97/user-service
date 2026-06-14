@@ -48,10 +48,14 @@ public class FollowService {
         }
 
         if (followee.isPrivateProfile()) {
-            if (followRequestRepository.existsByRequesterUsernameAndTargetUsernameAndStatus(
-                    followerUsername, followeeUsername, FollowRequestStatus.PENDING)) {
-                throw new IllegalStateException("Follow request already pending");
-            }
+            followRequestRepository.findByRequesterUsernameAndTargetUsername(followerUsername, followeeUsername)
+                    .ifPresent(existing -> {
+                        if (existing.getStatus() == FollowRequestStatus.PENDING) {
+                            throw new IllegalStateException("Follow request already pending");
+                        }
+                        // Remove a previously rejected request so we can re-request
+                        followRequestRepository.delete(existing);
+                    });
             followRequestRepository.save(new FollowRequest(followerUsername, followeeUsername));
             logger.info("{} requested to follow {}", followerUsername, followeeUsername);
             return false;

@@ -197,4 +197,26 @@ public class UserControllerTest {
         mockMvc.perform(get("/users/by-username/ghost").with(auth("alice")))
                 .andExpect(status().isNotFound());
     }
+
+    // --- GET /search ---
+
+    @Test
+    public void searchUsers_authenticated_returnsMatchingUsers() throws Exception {
+        User alice = new User("alice", "pw", "alice@example.com", "Alice", "Austin");
+        when(userService.searchUsers("ali")).thenReturn(java.util.List.of(alice));
+
+        mockMvc.perform(get("/users/search").param("q", "ali").with(auth("bob")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].username").value("alice"));
+    }
+
+    @Test
+    public void searchUsers_emptyQuery_returnsEmptyList() throws Exception {
+        when(userService.searchUsers("")).thenReturn(java.util.List.of());
+
+        mockMvc.perform(get("/users/search").param("q", "").with(auth("bob")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$").isEmpty());
+    }
 }

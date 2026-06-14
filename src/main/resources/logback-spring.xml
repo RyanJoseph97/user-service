@@ -22,10 +22,10 @@
             <charset>UTF-8</charset>
         </encoder>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <!-- Rollover daily or when file size reaches 10MB -->
+            <!-- Controlled by logging.logback.rollingpolicy.* in application.properties -->
             <fileNamePattern>logs/user-service-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
-            <maxFileSize>10MB</maxFileSize>
-            <maxHistory>30</maxHistory>
+            <maxFileSize>${logging.logback.rollingpolicy.max-file-size:-10MB}</maxFileSize>
+            <maxHistory>${logging.logback.rollingpolicy.max-history:-30}</maxHistory>
             <totalSizeCap>1GB</totalSizeCap>
         </rollingPolicy>
     </appender>
@@ -43,8 +43,8 @@
         </encoder>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
             <fileNamePattern>logs/user-service-error-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
-            <maxFileSize>10MB</maxFileSize>
-            <maxHistory>30</maxHistory>
+            <maxFileSize>${logging.logback.rollingpolicy.max-file-size:-10MB}</maxFileSize>
+            <maxHistory>${logging.logback.rollingpolicy.max-history:-30}</maxHistory>
             <totalSizeCap>1GB</totalSizeCap>
         </rollingPolicy>
     </appender>

@@ -1,3 +1,4 @@
+DROP TABLE IF EXISTS refresh_tokens;
 DROP TABLE IF EXISTS user_follows;
 DROP TABLE IF EXISTS users;
 
@@ -9,7 +10,11 @@ CREATE TABLE users (
     name VARCHAR(255),
     location VARCHAR(255),
     date_joined DATE NOT NULL,
-    account_status VARCHAR(20) NOT NULL DEFAULT 'UNVERIFIED'
+    account_status VARCHAR(20) NOT NULL DEFAULT 'UNVERIFIED',
+    private_profile BOOLEAN NOT NULL DEFAULT FALSE,
+    profile_picture_url VARCHAR(255),
+    latitude DOUBLE,
+    longitude DOUBLE
 );
 
 CREATE TABLE user_follows (
@@ -21,6 +26,19 @@ CREATE TABLE user_follows (
     CONSTRAINT fk_followee FOREIGN KEY (followee_id) REFERENCES users(id),
     CONSTRAINT uq_follow UNIQUE (follower_id, followee_id)
 );
+
+CREATE INDEX idx_follow_followee_id ON user_follows(followee_id);
+
+CREATE TABLE refresh_tokens (
+    id         BIGINT AUTO_INCREMENT PRIMARY KEY,
+    token      VARCHAR(512)  NOT NULL UNIQUE,
+    username   VARCHAR(255)  NOT NULL,
+    issued_at  TIMESTAMP     NOT NULL,
+    expires_at TIMESTAMP     NOT NULL,
+    revoked    BOOLEAN       NOT NULL DEFAULT FALSE
+);
+
+CREATE INDEX idx_refresh_token_username ON refresh_tokens(username);
 
 INSERT INTO users (username, password, email, name, location, date_joined, account_status) VALUES
     ('jdoe',   '$2a$10$PT4OkMDKe1nOdEpjlgjDFeXPiLsYWl3eIyIA1A8k0dmH2hSK3QhBC', 'jdoe@example.com',   'John Doe',    'New York',    '2024-06-01', 'VERIFIED'),

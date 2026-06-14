@@ -2,6 +2,7 @@ package com.eventmaster.service;
 
 import com.eventmaster.exception.UserNotFoundException;
 import com.eventmaster.model.Follow;
+import com.eventmaster.model.FollowRequest;
 import com.eventmaster.model.FollowRequestStatus;
 import com.eventmaster.model.FollowerSummary;
 import com.eventmaster.model.User;
@@ -105,14 +106,14 @@ public class FollowServiceTest {
         when(userService.findByUsername("alice")).thenReturn(alice);
         when(userService.findByUsername("bob")).thenReturn(bob);
         when(followRepository.existsByFollowerAndFollowee(alice, bob)).thenReturn(false);
-        when(followRequestRepository.existsByRequesterUsernameAndTargetUsernameAndStatus(
-                "alice", "bob", FollowRequestStatus.PENDING)).thenReturn(false);
+        when(followRequestRepository.findByRequesterUsernameAndTargetUsername("alice", "bob"))
+                .thenReturn(Optional.empty());
 
         boolean immediate = followService.follow("alice", "bob");
 
         assertFalse(immediate);
         verify(followRepository, never()).save(any(Follow.class));
-        verify(followRequestRepository).save(any());
+        verify(followRequestRepository).save(any(FollowRequest.class));
     }
 
     // --- unfollow ---
@@ -196,5 +197,105 @@ public class FollowServiceTest {
         Page<FollowerSummary> result = followService.getFollowing("alice", Pageable.unpaged());
 
         assertTrue(result.isEmpty());
+    }
+
+    // --- follow (private profile / pending and rejected request cases) ---
+
+    @Test
+    public void follow_privateProfile_pendingRequest_throws() {
+        bob.setPrivateProfile(true);
+        FollowRequest pending = new FollowRequest("alice", "bob");
+        when(userService.findByUsername("alice")).thenReturn(alice);
+        when(userService.findByUsername("bob")).thenReturn(bob);
+        when(followRepository.existsByFollowerAndFollowee(alice, bob)).thenReturn(false);
+        when(followRequestRepository.findByRequesterUsernameAndTargetUsername("alice", "bob"))
+                .thenReturn(Optional.of(pending));
+
+        assertThrows(IllegalStateException.class, () -> followService.follow("alice", "bob"));
+        verify(followRequestRepository, never()).save(any());
+    }
+
+    @Test
+    public void follow_privateProfile_rejectedRequest_allowsReRequest() {
+        bob.setPrivateProfile(true);
+        FollowRequest rejected = new FollowRequest("alice", "bob");
+        rejected.setStatus(FollowRequestStatus.REJECTED);
+        when(userService.findByUsername("alice")).thenReturn(alice);
+        when(userService.findByUsername("bob")).thenReturn(bob);
+        when(followRepository.existsByFollowerAndFollowee(alice, bob)).thenReturn(false);
+        when(followRequestRepository.findByRequesterUsernameAndTargetUsername("alice", "bob"))
+                .thenReturn(Optional.of(rejected));
+
+        boolean immediate = followService.follow("alice", "bob");
+
+        assertFalse(immediate);
+        verify(followRequestRepository).delete(rejected);
+        verify(followRequestRepository).save(any(FollowRequest.class));
+    }
+
+    // --- approveRequest ---
+
+    @Test
+    public void approveRequest_pendingRequest_createsFollow() {
+        FollowRequest req = new FollowRequest("alice", "bob");
+        when(followRequestRepository.findByRequesterUsernameAndTargetUsername("alice", "bob"))
+                .thenReturn(Optional.of(req));
+        when(userService.findByUsername("alice")).thenReturn(alice);
+        when(userService.findByUsername("bob")).thenReturn(bob);
+
+        followService.approveRequest("bob", "alice");
+
+        assertEquals(FollowRequestStatus.APPROVED, req.getStatus());
+        verify(followRepository).save(any(Follow.class));
+        verify(followRequestRepository).save(req);
+    }
+
+    @Test
+    public void approveRequest_nonPendingRequest_throws() {
+        FollowRequest req = new FollowRequest("alice", "bob");
+        req.setStatus(FollowRequestStatus.APPROVED);
+        when(followRequestRepository.findByRequesterUsernameAndTargetUsername("alice", "bob"))
+                .thenReturn(Optional.of(req));
+
+        assertThrows(IllegalStateException.class, () -> followService.approveRequest("bob", "alice"));
+        verify(followRepository, never()).save(any());
+    }
+
+    @Test
+    public void approveRequest_noRequest_throws() {
+        when(followRequestRepository.findByRequesterUsernameAndTargetUsername("alice", "bob"))
+                .thenReturn(Optional.empty());
+
+        assertThrows(IllegalStateException.class, () -> followService.approveRequest("bob", "alice"));
+    }
+
+    // --- rejectRequest ---
+
+    @Test
+    public void rejectRequest_deletesRequest() {
+        followService.rejectRequest("bob", "alice");
+
+        verify(followRequestRepository).deleteByRequesterUsernameAndTargetUsername("alice", "bob");
+    }
+
+    // --- getRequestStatus ---
+
+    @Test
+    public void getRequestStatus_existingRequest_returnsStatus() {
+        FollowRequest req = new FollowRequest("alice", "bob");
+        when(followRequestRepository.findByRequesterUsernameAndTargetUsername("alice", "bob"))
+                .thenReturn(Optional.of(req));
+
+        FollowRequestStatus status = followService.getRequestStatus("alice", "bob");
+
+        assertEquals(FollowRequestStatus.PENDING, status);
+    }
+
+    @Test
+    public void getRequestStatus_noRequest_returnsNull() {
+        when(followRequestRepository.findByRequesterUsernameAndTargetUsername("alice", "bob"))
+                .thenReturn(Optional.empty());
+
+        assertNull(followService.getRequestStatus("alice", "bob"));
     }
 }
