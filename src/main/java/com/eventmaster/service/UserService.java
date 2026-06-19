@@ -10,12 +10,18 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
+import com.eventmaster.model.AccountStatus;
 import com.eventmaster.model.ChangePasswordRequest;
 import com.eventmaster.model.UpdateUserRequest;
 import com.eventmaster.repository.FollowRepository;
+import com.eventmaster.repository.FollowRequestRepository;
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 @Service
 public class UserService {
@@ -29,6 +35,9 @@ public class UserService {
 
     @Autowired
     private FollowRepository followRepository;
+
+    @Autowired
+    private FollowRequestRepository followRequestRepository;
 
     public User saveUser(User user) {
         logger.info("Attempting to save user with username: {}", user.getUsername());
@@ -133,7 +142,7 @@ public class UserService {
 
     public User verifyUser(String username) {
         User user = findByUsername(username);
-        user.setVerified(true);
+        user.setAccountStatus(AccountStatus.VERIFIED);
         return userRepository.save(user);
     }
 
@@ -142,6 +151,10 @@ public class UserService {
         if (request.getEmail() != null) user.setEmail(request.getEmail());
         if (request.getName() != null) user.setName(request.getName());
         if (request.getLocation() != null) user.setLocation(request.getLocation());
+        if (request.getPrivateProfile() != null) user.setPrivateProfile(request.getPrivateProfile());
+        if (request.getProfilePictureUrl() != null) user.setProfilePictureUrl(request.getProfilePictureUrl());
+        if (request.getLatitude() != null) user.setLatitude(request.getLatitude());
+        if (request.getLongitude() != null) user.setLongitude(request.getLongitude());
         return saveUser(user);
     }
 
@@ -160,14 +173,29 @@ public class UserService {
         User user = findByUsername(username);
         followRepository.deleteByFollower(user);
         followRepository.deleteByFollowee(user);
+        followRequestRepository.deleteByRequesterUsername(username);
+        followRequestRepository.deleteByTargetUsername(username);
         userRepository.delete(user);
         logger.info("Deleted user: {}", username);
     }
 
-    public List<User> getAllUsers() {
+    public Page<User> getAllUsers(Pageable pageable) {
         logger.debug("Fetching all users");
-        List<User> users = userRepository.findAll();
-        logger.info("Retrieved {} users from database", users.size());
+        Page<User> users = userRepository.findAll(pageable);
+        logger.info("Retrieved {} users from database", users.getTotalElements());
         return users;
+    }
+
+    public List<User> searchUsers(String q) {
+        logger.debug("Searching users with query: {}", q);
+        return userRepository.findByUsernameContainingIgnoreCaseOrNameContainingIgnoreCase(
+                q, q, org.springframework.data.domain.PageRequest.of(0, 20)).getContent();
+    }
+
+    public Map<String, String> findProfilePictureUrlsByUsernames(List<String> usernames) {
+        Map<String, String> result = new HashMap<>();
+        userRepository.findByUsernameIn(usernames)
+                .forEach(u -> result.put(u.getUsername(), u.getProfilePictureUrl()));
+        return result;
     }
 }

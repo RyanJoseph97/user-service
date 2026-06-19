@@ -1,5 +1,7 @@
 package com.eventmaster.repository;
 import com.eventmaster.model.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -17,4 +19,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     // Make sure there is no custom query defined for findAll()
     List<User> findAll();
+
+    Page<User> findByUsernameContainingIgnoreCaseOrNameContainingIgnoreCase(
+            String username, String name, Pageable pageable);
+
+    List<User> findByUsernameIn(List<String> usernames);
 }

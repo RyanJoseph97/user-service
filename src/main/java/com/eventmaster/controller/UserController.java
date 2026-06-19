@@ -1,24 +1,34 @@
 package com.eventmaster.controller;
 
+import com.eventmaster.exception.InvalidRefreshTokenException;
 import com.eventmaster.exception.UserNotFoundException;
 import com.eventmaster.model.ChangePasswordRequest;
 import com.eventmaster.model.CreateUserRequest;
+import com.eventmaster.model.LoginResponse;
+import com.eventmaster.model.RefreshToken;
 import com.eventmaster.model.UpdateUserRequest;
 import com.eventmaster.model.User;
-import com.eventmaster.model.LoginResponse;
-import com.eventmaster.service.UserService;
+import com.eventmaster.model.UserSearchResult;
 import com.eventmaster.service.PasswordService;
+import com.eventmaster.service.RefreshTokenService;
+import com.eventmaster.service.UserService;
 import com.eventmaster.jwt.JwtConfig;
 import javax.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/users")
@@ -30,18 +40,20 @@ public class UserController {
 
     private final UserService userService;
     private final PasswordService passwordService;
+    private final JwtConfig jwtConfig;
+    private final RefreshTokenService refreshTokenService;
 
     @Autowired
-    public UserController(UserService userService, PasswordService passwordService, JwtConfig jwtConfig) {
+    public UserController(UserService userService, PasswordService passwordService,
+                          JwtConfig jwtConfig, RefreshTokenService refreshTokenService) {
         this.userService = userService;
         this.passwordService = passwordService;
         this.jwtConfig = jwtConfig;
+        this.refreshTokenService = refreshTokenService;
     }
 
-    private final JwtConfig jwtConfig;
-
     @GetMapping("/{id}")
-    public ResponseEntity<User> getUserById(@PathVariable Long id){
+    public ResponseEntity<User> getUserById(@PathVariable Long id) {
         logger.debug("GET request received for user id: {}", id);
         return userService.findById(id)
                 .map(user -> {
@@ -55,10 +67,10 @@ public class UserController {
     }
 
     @GetMapping("/by-username/{username}")
-    public ResponseEntity<User> getUserByUsername(@PathVariable String username){
+    public ResponseEntity<User> getUserByUsername(@PathVariable String username) {
         logger.debug("GET request received for username: {}", username);
         User user = userService.findByUsername(username);
-        if (user != null){
+        if (user != null) {
             logger.info("Returning user for username: {}", username);
             return ResponseEntity.ok(user);
         } else {
@@ -68,10 +80,10 @@ public class UserController {
     }
 
     @GetMapping("/by-email/{email}")
-    public ResponseEntity<User> getUserByEmail(@PathVariable String email){
+    public ResponseEntity<User> getUserByEmail(@PathVariable String email) {
         logger.debug("GET request received for email: {}", email);
         User user = userService.findByEmail(email);
-        if (user != null){
+        if (user != null) {
             logger.info("Returning user for email: {}", email);
             return ResponseEntity.ok(user);
         } else {
@@ -81,11 +93,20 @@ public class UserController {
     }
 
     @GetMapping
-    public ResponseEntity<List<User>> getAllUsers() {
+    public ResponseEntity<Page<User>> getAllUsers(@PageableDefault(size = 20) Pageable pageable) {
         logger.debug("GET request received to fetch all users");
-        List<User> users = userService.getAllUsers();
-        logger.info("Returning {} users", users.size());
+        Page<User> users = userService.getAllUsers(pageable);
+        logger.info("Returning {} users", users.getTotalElements());
         return ResponseEntity.ok(users);
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<List<UserSearchResult>> searchUsers(@RequestParam String q) {
+        logger.debug("GET /users/search q={}", q);
+        List<UserSearchResult> results = userService.searchUsers(q).stream()
+                .map(UserSearchResult::new)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(results);
     }
 
     @PostMapping
@@ -141,37 +162,29 @@ public class UserController {
         return ResponseEntity.noContent().build();
     }
 
-    /**
-     * Login endpoint for user authentication.
-     * Returns a JWT token and user information upon successful authentication.
-     * 
-     * @param loginRequest contains username and password
-     * @return LoginResponse with JWT token and user info, or 401 if invalid credentials
-     */
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest loginRequest) {
         logger.debug("Login attempt for username: {}", loginRequest.getUsername());
-        
         try {
             User user = userService.findByUsername(loginRequest.getUsername());
-            
-            // Verify password using the PasswordService
             if (passwordService.verifyPassword(loginRequest.getPassword(), user.getPassword())) {
-                // Generate JWT token
-                String jwtToken = jwtConfig.generateToken(user.getUsername());
-                
-                // Create login response with token and user info
-                LoginResponse loginResponse = new LoginResponse(
-                    jwtToken,
-                    user.getUsername(),
-                    user.getEmail(),
-                    user.getName(),
-                    user.getLocation(),
-                    user.getDateJoined().toString()
+                Map<String, Object> claims = new HashMap<>();
+                claims.put("accountStatus", user.getAccountStatus().name());
+                String accessToken = jwtConfig.generateToken(user.getUsername(), claims);
+                RefreshToken rt = refreshTokenService.createFor(user.getUsername());
+
+                LoginResponse response = new LoginResponse(
+                        accessToken,
+                        rt.getToken(),
+                        user.getUsername(),
+                        user.getEmail(),
+                        user.getName(),
+                        user.getLocation(),
+                        user.getDateJoined().toString(),
+                        user.getAccountStatus().name()
                 );
-                
                 logger.info("Successful login for user: {}", loginRequest.getUsername());
-                return ResponseEntity.ok(loginResponse);
+                return ResponseEntity.ok(response);
             } else {
                 logger.warn("Invalid password for user: {}", loginRequest.getUsername());
                 return ResponseEntity.status(401).build();
@@ -185,35 +198,67 @@ public class UserController {
         }
     }
 
-    /**
-     * Simple login request DTO for authentication.
-     */
+    @PostMapping("/token/refresh")
+    public ResponseEntity<TokenRefreshResponse> refreshToken(@RequestBody TokenRefreshRequest request) {
+        try {
+            RefreshToken newRt = refreshTokenService.rotate(request.getRefreshToken());
+            User user = userService.findByUsername(newRt.getUsername());
+            Map<String, Object> claims = new HashMap<>();
+            claims.put("accountStatus", user.getAccountStatus().name());
+            String newAccessToken = jwtConfig.generateToken(newRt.getUsername(), claims);
+            return ResponseEntity.ok(new TokenRefreshResponse(newAccessToken, newRt.getToken()));
+        } catch (InvalidRefreshTokenException e) {
+            logger.warn("Token refresh rejected: {}", e.getMessage());
+            return ResponseEntity.status(401).build();
+        }
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(@RequestBody LogoutRequest request) {
+        refreshTokenService.revoke(request.getRefreshToken());
+        return ResponseEntity.noContent().build();
+    }
+
     public static class LoginRequest {
         private String username;
         private String password;
 
         public LoginRequest() {}
 
-        public LoginRequest(String username, String password) {
-            this.username = username;
-            this.password = password;
-        }
-
-        public String getUsername() {
-            return username;
-        }
-
-        public void setUsername(String username) {
-            this.username = username;
-        }
-
-        public String getPassword() {
-            return password;
-        }
-
-        public void setPassword(String password) {
-            this.password = password;
-        }
+        public String getUsername() { return username; }
+        public void setUsername(String username) { this.username = username; }
+        public String getPassword() { return password; }
+        public void setPassword(String password) { this.password = password; }
     }
 
+    public static class TokenRefreshRequest {
+        private String refreshToken;
+
+        public TokenRefreshRequest() {}
+
+        public String getRefreshToken() { return refreshToken; }
+        public void setRefreshToken(String refreshToken) { this.refreshToken = refreshToken; }
+    }
+
+    public static class TokenRefreshResponse {
+        private String accessToken;
+        private String refreshToken;
+
+        public TokenRefreshResponse(String accessToken, String refreshToken) {
+            this.accessToken = accessToken;
+            this.refreshToken = refreshToken;
+        }
+
+        public String getAccessToken() { return accessToken; }
+        public String getRefreshToken() { return refreshToken; }
+    }
+
+    public static class LogoutRequest {
+        private String refreshToken;
+
+        public LogoutRequest() {}
+
+        public String getRefreshToken() { return refreshToken; }
+        public void setRefreshToken(String refreshToken) { this.refreshToken = refreshToken; }
+    }
 }

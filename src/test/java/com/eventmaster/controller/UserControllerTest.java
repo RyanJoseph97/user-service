@@ -70,13 +70,13 @@ public class UserControllerTest {
     @Test
     public void verifyUser_asAdmin_returns200() throws Exception {
         User user = new User("someuser", "pw", "s@example.com", "Some User", "");
-        user.setVerified(true);
+        user.setAccountStatus(com.eventmaster.model.AccountStatus.VERIFIED);
         when(userService.verifyUser("someuser")).thenReturn(user);
 
         mockMvc.perform(patch("/users/someuser/verify").with(auth("admin")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.username").value("someuser"))
-                .andExpect(jsonPath("$.verified").value(true));
+                .andExpect(jsonPath("$.accountStatus").value("VERIFIED"));
     }
 
     @Test
@@ -196,5 +196,31 @@ public class UserControllerTest {
 
         mockMvc.perform(get("/users/by-username/ghost").with(auth("alice")))
                 .andExpect(status().isNotFound());
+    }
+
+    // --- GET /search ---
+
+    @Test
+    public void searchUsers_authenticated_returnsMatchingUsers() throws Exception {
+        User alice = new User("alice", "pw", "alice@example.com", "Alice", "Austin");
+        when(userService.searchUsers("ali")).thenReturn(java.util.List.of(alice));
+
+        mockMvc.perform(get("/users/search").param("q", "ali").with(auth("bob")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].username").value("alice"))
+                .andExpect(jsonPath("$[0].name").value("Alice"))
+                // Search results are a redacted projection — PII must not be exposed
+                .andExpect(jsonPath("$[0].email").doesNotExist())
+                .andExpect(jsonPath("$[0].location").doesNotExist());
+    }
+
+    @Test
+    public void searchUsers_emptyQuery_returnsEmptyList() throws Exception {
+        when(userService.searchUsers("")).thenReturn(java.util.List.of());
+
+        mockMvc.perform(get("/users/search").param("q", "").with(auth("bob")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$").isEmpty());
     }
 }

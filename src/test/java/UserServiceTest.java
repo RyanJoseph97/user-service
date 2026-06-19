@@ -3,6 +3,7 @@ import com.eventmaster.model.ChangePasswordRequest;
 import com.eventmaster.model.UpdateUserRequest;
 import com.eventmaster.model.User;
 import com.eventmaster.repository.FollowRepository;
+import com.eventmaster.repository.FollowRequestRepository;
 import com.eventmaster.repository.UserRepository;
 import com.eventmaster.service.UserService;
 import com.eventmaster.service.PasswordService;
@@ -10,6 +11,9 @@ import com.eventmaster.exception.UserNotFoundException;
 
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -26,6 +30,12 @@ public class UserServiceTest {
     private static final String testemail = "testemail";
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private FollowRepository followRepository;
+
+    @Mock
+    private FollowRequestRepository followRequestRepository;
 
     @InjectMocks
     private UserService userService;
@@ -148,9 +158,6 @@ public class UserServiceTest {
         assertEquals(user.getUsername(), user_ret.getUsername());
     }
 
-    @Mock
-    private FollowRepository followRepository;
-
     // Password hashing tests
     @Mock
     private PasswordService passwordService;
@@ -202,14 +209,14 @@ public class UserServiceTest {
     @Test
     public void testVerifyUser_setsVerifiedTrue() {
         User user = new User(username, "hashedpw", "test@example.com", "Test", "Location");
-        assertFalse(user.isVerified());
+        assertEquals(com.eventmaster.model.AccountStatus.UNVERIFIED, user.getAccountStatus());
 
         when(userRepository.findByUsername(username)).thenReturn(Optional.of(user));
         when(userRepository.save(user)).thenReturn(user);
 
         User result = userService.verifyUser(username);
 
-        assertTrue(result.isVerified());
+        assertEquals(com.eventmaster.model.AccountStatus.VERIFIED, result.getAccountStatus());
         verify(userRepository).save(user);
     }
 
@@ -294,6 +301,8 @@ public class UserServiceTest {
 
         verify(followRepository).deleteByFollower(user);
         verify(followRepository).deleteByFollowee(user);
+        verify(followRequestRepository).deleteByRequesterUsername(username);
+        verify(followRequestRepository).deleteByTargetUsername(username);
         verify(userRepository).delete(user);
     }
 
@@ -312,10 +321,10 @@ public class UserServiceTest {
                 new User("user1", "pw", "u1@example.com", "User One", ""),
                 new User("user2", "pw", "u2@example.com", "User Two", "")
         );
-        when(userRepository.findAll()).thenReturn(users);
+        when(userRepository.findAll(Pageable.unpaged())).thenReturn(new PageImpl<>(users));
 
-        List<User> result = userService.getAllUsers();
+        Page<User> result = userService.getAllUsers(Pageable.unpaged());
 
-        assertEquals(2, result.size());
+        assertEquals(2, result.getTotalElements());
     }
 }

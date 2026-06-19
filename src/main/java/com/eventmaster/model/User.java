@@ -32,8 +32,21 @@ public class User {
     @Column(name = "date_joined", nullable = false)
     private LocalDate dateJoined;
 
-    @Column(nullable = false)
-    private boolean verified = false;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "account_status", nullable = false)
+    private AccountStatus accountStatus = AccountStatus.UNVERIFIED;
+
+    @Column(name = "private_profile", nullable = false)
+    private boolean privateProfile = false;
+
+    @Column(name = "profile_picture_url")
+    private String profilePictureUrl;
+
+    @Column
+    private Double latitude;
+
+    @Column
+    private Double longitude;
 
     // Constructors
     public User() {
@@ -115,11 +128,33 @@ public class User {
         this.dateJoined = dateJoined;
     }
 
-    public boolean isVerified() {
-        return verified;
+    public AccountStatus getAccountStatus() {
+        return accountStatus;
     }
 
-    public void setVerified(boolean verified) {
-        this.verified = verified;
+    public void setAccountStatus(AccountStatus accountStatus) {
+        this.accountStatus = accountStatus;
     }
+
+    public boolean isPrivateProfile() {
+        return privateProfile;
+    }
+
+    public void setPrivateProfile(boolean privateProfile) {
+        this.privateProfile = privateProfile;
+    }
+
+    public String getProfilePictureUrl() {
+        return profilePictureUrl;
+    }
+
+    public void setProfilePictureUrl(String profilePictureUrl) {
+        this.profilePictureUrl = profilePictureUrl;
+    }
+
+    public Double getLatitude() { return latitude; }
+    public void setLatitude(Double latitude) { this.latitude = latitude; }
+
+    public Double getLongitude() { return longitude; }
+    public void setLongitude(Double longitude) { this.longitude = longitude; }
 }
