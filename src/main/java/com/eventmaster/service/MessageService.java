@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -54,10 +55,16 @@ public class MessageService {
         return partners.stream()
                 .map(partner -> {
                     Message last = messageRepository.findLastMessageInThread(username, partner);
+                    // Defensive: a partner is only listed because a message exists, but guard
+                    // against a null last message (e.g. concurrent deletion) rather than NPE.
+                    if (last == null) {
+                        return null;
+                    }
                     long unread = messageRepository
                             .countByRecipientUsernameAndSenderUsernameAndReadAtIsNull(username, partner);
                     return new ConversationSummary(partner, profilePics.get(partner), last.getContent(), last.getSentAt(), unread);
                 })
+                .filter(Objects::nonNull)
                 .sorted(Comparator.comparing(ConversationSummary::getLastMessageAt).reversed())
                 .collect(Collectors.toList());
     }

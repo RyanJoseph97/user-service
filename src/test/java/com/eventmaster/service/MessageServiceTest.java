@@ -110,18 +110,60 @@ public class MessageServiceTest {
     // --- getConversations ---
 
     @Test
-    public void getConversations_nullLastMessage_doesNotNpe() {
+    public void getConversations_nullLastMessage_skipsPartnerWithoutNpe() {
         when(messageRepository.findConversationPartners("alice")).thenReturn(List.of("bob"));
-        Message last = new Message("alice", "bob", "Yo");
-        when(messageRepository.findLastMessageInThread("alice", "bob")).thenReturn(last);
-        when(messageRepository.countByRecipientUsernameAndSenderUsernameAndReadAtIsNull("alice", "bob"))
-                .thenReturn(0L);
+        when(messageRepository.findLastMessageInThread("alice", "bob")).thenReturn(null);
         when(userService.findProfilePictureUrlsByUsernames(List.of("bob")))
                 .thenReturn(java.util.Collections.singletonMap("bob", null));
 
         var convs = messageService.getConversations("alice");
 
+        // The partner with no resolvable last message is skipped rather than causing an NPE
+        assertTrue(convs.isEmpty());
+    }
+
+    @Test
+    public void getConversations_ordersByMostRecentLastMessageFirst() {
+        // Partners come back in [bob, carol] order; bob's last message is older, so the
+        // result must be re-sorted to put carol (more recent) first.
+        when(messageRepository.findConversationPartners("alice")).thenReturn(List.of("bob", "carol"));
+
+        Message lastFromBob = mock(Message.class);
+        when(lastFromBob.getContent()).thenReturn("older");
+        when(lastFromBob.getSentAt()).thenReturn(LocalDateTime.of(2024, 1, 1, 10, 0));
+        Message lastFromCarol = mock(Message.class);
+        when(lastFromCarol.getContent()).thenReturn("newer");
+        when(lastFromCarol.getSentAt()).thenReturn(LocalDateTime.of(2024, 1, 2, 10, 0));
+
+        when(messageRepository.findLastMessageInThread("alice", "bob")).thenReturn(lastFromBob);
+        when(messageRepository.findLastMessageInThread("alice", "carol")).thenReturn(lastFromCarol);
+        when(messageRepository.countByRecipientUsernameAndSenderUsernameAndReadAtIsNull(eq("alice"), anyString()))
+                .thenReturn(0L);
+        when(userService.findProfilePictureUrlsByUsernames(List.of("bob", "carol")))
+                .thenReturn(java.util.Collections.emptyMap());
+
+        var convs = messageService.getConversations("alice");
+
+        assertEquals(2, convs.size());
+        assertEquals("carol", convs.get(0).getOtherUsername());
+        assertEquals("bob", convs.get(1).getOtherUsername());
+    }
+
+    @Test
+    public void getConversations_reportsUnreadCountPerPartner() {
+        when(messageRepository.findConversationPartners("alice")).thenReturn(List.of("bob"));
+        Message last = mock(Message.class);
+        when(last.getContent()).thenReturn("hey");
+        when(last.getSentAt()).thenReturn(LocalDateTime.of(2024, 1, 1, 10, 0));
+        when(messageRepository.findLastMessageInThread("alice", "bob")).thenReturn(last);
+        when(messageRepository.countByRecipientUsernameAndSenderUsernameAndReadAtIsNull("alice", "bob"))
+                .thenReturn(3L);
+        when(userService.findProfilePictureUrlsByUsernames(List.of("bob")))
+                .thenReturn(java.util.Collections.emptyMap());
+
+        var convs = messageService.getConversations("alice");
+
         assertEquals(1, convs.size());
-        assertEquals("bob", convs.get(0).getOtherUsername());
+        assertEquals(3L, convs.get(0).getUnreadCount());
     }
 }

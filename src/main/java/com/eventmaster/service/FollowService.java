@@ -1,12 +1,8 @@
 package com.eventmaster.service;
 
-import com.eventmaster.model.Follow;
-import com.eventmaster.model.FollowerSummary;
-import com.eventmaster.model.FollowRequest;
-import com.eventmaster.model.FollowRequestStatus;
-import com.eventmaster.model.User;
-import com.eventmaster.repository.FollowRepository;
-import com.eventmaster.repository.FollowRequestRepository;
+import java.time.LocalDateTime;
+import java.util.List;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,7 +11,13 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
+import com.eventmaster.model.Follow;
+import com.eventmaster.model.FollowRequest;
+import com.eventmaster.model.FollowRequestStatus;
+import com.eventmaster.model.FollowerSummary;
+import com.eventmaster.model.User;
+import com.eventmaster.repository.FollowRepository;
+import com.eventmaster.repository.FollowRequestRepository;
 
 @Service
 public class FollowService {
@@ -48,15 +50,22 @@ public class FollowService {
         }
 
         if (followee.isPrivateProfile()) {
-            followRequestRepository.findByRequesterUsernameAndTargetUsername(followerUsername, followeeUsername)
-                    .ifPresent(existing -> {
+            // Reuse any existing request row rather than delete + re-insert: the unique
+            // constraint on (requester_username, target_username) plus IDENTITY insert timing
+            // would otherwise risk a constraint violation on save.
+            FollowRequest request = followRequestRepository
+                    .findByRequesterUsernameAndTargetUsername(followerUsername, followeeUsername)
+                    .map(existing -> {
                         if (existing.getStatus() == FollowRequestStatus.PENDING) {
                             throw new IllegalStateException("Follow request already pending");
                         }
-                        // Remove a previously rejected request so we can re-request
-                        followRequestRepository.delete(existing);
-                    });
-            followRequestRepository.save(new FollowRequest(followerUsername, followeeUsername));
+                        // Resurrect a previously resolved request as a fresh pending one
+                        existing.setStatus(FollowRequestStatus.PENDING);
+                        existing.setCreatedAt(LocalDateTime.now());
+                        return existing;
+                    })
+                    .orElseGet(() -> new FollowRequest(followerUsername, followeeUsername));
+            followRequestRepository.save(request);
             logger.info("{} requested to follow {}", followerUsername, followeeUsername);
             return false;
         }

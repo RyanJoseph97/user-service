@@ -229,8 +229,10 @@ public class FollowServiceTest {
         boolean immediate = followService.follow("alice", "bob");
 
         assertFalse(immediate);
-        verify(followRequestRepository).delete(rejected);
-        verify(followRequestRepository).save(any(FollowRequest.class));
+        // The existing row is resurrected as PENDING and re-saved, not deleted + re-inserted
+        verify(followRequestRepository, never()).delete(any());
+        assertEquals(FollowRequestStatus.PENDING, rejected.getStatus());
+        verify(followRequestRepository).save(rejected);
     }
 
     // --- approveRequest ---
@@ -276,6 +278,31 @@ public class FollowServiceTest {
         followService.rejectRequest("bob", "alice");
 
         verify(followRequestRepository).deleteByRequesterUsernameAndTargetUsername("alice", "bob");
+    }
+
+    // --- getPendingRequests ---
+
+    @Test
+    public void getPendingRequests_returnsOnlyPendingForTarget() {
+        FollowRequest fromAlice = new FollowRequest("alice", "bob");
+        FollowRequest fromCarol = new FollowRequest("carol", "bob");
+        when(followRequestRepository.findByTargetUsernameAndStatus("bob", FollowRequestStatus.PENDING))
+                .thenReturn(List.of(fromAlice, fromCarol));
+
+        List<FollowRequest> result = followService.getPendingRequests("bob");
+
+        assertEquals(2, result.size());
+        verify(followRequestRepository).findByTargetUsernameAndStatus("bob", FollowRequestStatus.PENDING);
+    }
+
+    @Test
+    public void getPendingRequests_none_returnsEmptyList() {
+        when(followRequestRepository.findByTargetUsernameAndStatus("bob", FollowRequestStatus.PENDING))
+                .thenReturn(List.of());
+
+        List<FollowRequest> result = followService.getPendingRequests("bob");
+
+        assertTrue(result.isEmpty());
     }
 
     // --- getRequestStatus ---

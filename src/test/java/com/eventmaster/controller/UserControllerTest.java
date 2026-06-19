@@ -207,7 +207,11 @@ public class UserControllerTest {
 
         mockMvc.perform(get("/users/search").param("q", "ali").with(auth("bob")))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].username").value("alice"));
+                .andExpect(jsonPath("$[0].username").value("alice"))
+                .andExpect(jsonPath("$[0].name").value("Alice"))
+                // Search results are a redacted projection — PII must not be exposed
+                .andExpect(jsonPath("$[0].email").doesNotExist())
+                .andExpect(jsonPath("$[0].location").doesNotExist());
     }
 
     @Test

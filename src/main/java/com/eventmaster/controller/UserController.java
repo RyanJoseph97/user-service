@@ -8,6 +8,7 @@ import com.eventmaster.model.LoginResponse;
 import com.eventmaster.model.RefreshToken;
 import com.eventmaster.model.UpdateUserRequest;
 import com.eventmaster.model.User;
+import com.eventmaster.model.UserSearchResult;
 import com.eventmaster.service.PasswordService;
 import com.eventmaster.service.RefreshTokenService;
 import com.eventmaster.service.UserService;
@@ -27,6 +28,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/users")
@@ -99,9 +101,12 @@ public class UserController {
     }
 
     @GetMapping("/search")
-    public ResponseEntity<List<User>> searchUsers(@RequestParam String q) {
+    public ResponseEntity<List<UserSearchResult>> searchUsers(@RequestParam String q) {
         logger.debug("GET /users/search q={}", q);
-        return ResponseEntity.ok(userService.searchUsers(q));
+        List<UserSearchResult> results = userService.searchUsers(q).stream()
+                .map(UserSearchResult::new)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(results);
     }
 
     @PostMapping

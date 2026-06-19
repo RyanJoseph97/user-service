@@ -42,4 +42,5 @@ public class FollowRequest {
     public FollowRequestStatus getStatus() { return status; }
     public void setStatus(FollowRequestStatus status) { this.status = status; }
     public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }
