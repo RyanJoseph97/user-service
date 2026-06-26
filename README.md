@@ -1,487 +1,96 @@
-# User Service
+# user-service
 
-A Spring Boot microservice for managing user accounts in the EventMaster application. This service handles user registration, authentication, and profile management.
+Manages user accounts, JWT authentication, social graph (follow/unfollow), notifications, and direct messages for EventMaster.
 
-## Table of Contents
+Port: `8080`. Context path: `/user-service`.
 
-- [Features](#features)
-- [Technology Stack](#technology-stack)
-- [Prerequisites](#prerequisites)
-- [Installation](#installation)
-- [Configuration](#configuration)
-- [Logging](#logging)
-- [API Endpoints](#api-endpoints)
-- [Project Structure](#project-structure)
-- [Running Tests](#running-tests)
-- [Building and Deployment](#building-and-deployment)
-- [CI/CD Pipeline](#cicd-pipeline)
+## Endpoints
 
-## Features
+### Users
+| Method | Path | Auth | Notes |
+|--------|------|------|-------|
+| `POST` | `/users` | None | Register a new user |
+| `GET` | `/users` | Required | List all users |
+| `GET` | `/users/search` | None | Search users by username |
+| `GET` | `/users/{id}` | Required | Get user by ID |
+| `GET` | `/users/by-username/{username}` | Required | Get user by username |
+| `GET` | `/users/by-email/{email}` | Required | Get user by email |
+| `PATCH` | `/users/{username}` | Required | Update profile |
+| `PATCH` | `/users/{username}/password` | Required | Change password |
+| `PATCH` | `/users/{username}/verify` | Admin | Set AccountStatus |
+| `DELETE` | `/users/{username}` | Required | Delete account |
 
-- **User Management**: Create, retrieve, and manage user profiles
-- **Multiple Lookup Methods**: Find users by ID, username, or email
-- **Exception Handling**: Global exception handling for consistent error responses
-- **Database**: H2 in-memory database for development and testing
-- **REST API**: RESTful API following Spring Boot conventions
-- **JPA/Hibernate**: Object-relational mapping for database operations
+### Auth
+| Method | Path | Auth | Notes |
+|--------|------|------|-------|
+| `POST` | `/users/login` | None | Returns JWT |
+| `POST` | `/users/token/refresh` | None | Refresh JWT |
+| `POST` | `/users/logout` | None | Invalidate token |
 
-## Technology Stack
+### Follow
+| Method | Path | Auth | Notes |
+|--------|------|------|-------|
+| `POST` | `/users/{username}/follow` | Required | Follow a user (or send request if private) |
+| `DELETE` | `/users/{username}/follow` | Required | Unfollow |
+| `GET` | `/users/{username}/followers` | Required | List followers |
+| `GET` | `/users/{username}/following` | Required | List followed accounts |
+| `GET` | `/users/{username}/follow-requests` | Required | Pending incoming follow requests |
+| `GET` | `/users/{username}/follow-request-status` | Required | Check request status |
+| `POST` | `/users/{username}/follow-requests/{requesterUsername}/approve` | Required | Approve request |
+| `DELETE` | `/users/{username}/follow-requests/{requesterUsername}` | Required | Reject request |
 
-- **Java 11**
-- **Spring Boot 2.7.14**
-- **Spring Data JPA**
-- **Hibernate**
-- **H2 Database**
-- **Maven**
-- **JUnit 5**
+### Notifications
+| Method | Path | Auth | Notes |
+|--------|------|------|-------|
+| `GET` | `/users/notifications` | Required | List notifications for caller |
+| `GET` | `/users/notifications/unseen-count` | Required | Count of unseen notifications |
+| `POST` | `/users/notifications/mark-seen` | Required | Mark notifications as seen |
 
-## Prerequisites
+### Messages
+| Method | Path | Auth | Notes |
+|--------|------|------|-------|
+| `POST` | `/users/messages` | Required | Send a direct message |
+| `GET` | `/users/messages/conversations` | Required | List conversations |
+| `GET` | `/users/messages/{username}` | Required | Get thread with a user |
 
-- Java 11 or higher
-- Maven 3.6+
-- Git
+## Authentication
 
-## Installation
+All endpoints except `POST /users`, `POST /users/login`, `POST /users/token/refresh`, `POST /users/logout`, and `GET /users/search` require a `Authorization: Bearer <token>` header. JWTs are issued by `POST /users/login` and are valid for 24 hours.
 
-1. **Clone the repository**:
-   ```bash
-   git clone <repository-url>
-   cd user-service
-   ```
+## Account Status
 
-2. **Build the project**:
-   ```bash
-   mvn clean install
-   ```
+New accounts start as `UNVERIFIED`. An admin can advance status via `PATCH /users/{username}/verify`:
 
-3. **Run the application**:
-   ```bash
-   mvn spring-boot:run
-   ```
+- `UNVERIFIED` — can create INVITE_ONLY events only
+- `VERIFIED` — can create PUBLIC events
+- `TRUSTED` — same as VERIFIED, higher trust tier
 
-The service will start on `http://localhost:8080/user-service`
+Admin username is controlled by the `ADMIN_USERNAME` environment variable (default: `admin`).
 
-## Configuration
+## Private Profiles
 
-Configuration is managed in `src/main/resources/application.properties`:
+If a user's profile is set to private, follow requests must be approved before the requester appears in the follower list or can access protected content.
 
-```properties
-server.port=8080
+## Running Locally
 
-# Database Configuration
-spring.datasource.url=jdbc:h2:mem:testdb
-spring.datasource.driverClassName=org.h2.Driver
-spring.datasource.username=sa
-spring.datasource.password=
-
-# JPA Configuration
-spring.jpa.database-platform=org.hibernate.dialect.H2Dialect
-spring.jpa.hibernate.ddl-auto=update
-spring.jpa.show-sql=true
-
-# H2 Console
-spring.h2.console.enabled=true
-spring.h2.console.path=/h2-console
-```
-
-### Database
-- **Type**: H2 (in-memory)
-- **Console**: Available at `http://localhost:8080/user-service/h2-console`
-
-## Logging
-
-This application uses **SLF4J** with **Logback** as the default logging implementation. No additional logging library (like Log4j) is needed.
-
-### Logging Configuration
-
-Logging is configured in two places:
-
-#### 1. `application.properties` (Basic configuration)
-```properties
-logging.level.root=INFO
-logging.level.com.eventmaster=INFO
-logging.level.org.springframework.web=INFO
-logging.level.org.hibernate.SQL=DEBUG
-logging.file.name=logs/user-service.log
-logging.file.max-size=10MB
-logging.file.max-history=30
-```
-
-#### 2. `logback-spring.xml` (Advanced configuration)
-Provides detailed control over:
-- **Console output**: Real-time logs in the terminal
-- **File output**: Logs written to `logs/user-service.log`
-- **Error logs**: Separate file for errors only at `logs/user-service-error.log`
-- **Rolling policies**: Automatic log rotation based on size and date
-- **Log patterns**: Customizable timestamp, thread, level, and message formats
-
-### Log Output
-
-#### Console Output
-When running the application, logs will appear in the console with the format:
-```
-2025-02-22 10:15:30 [main] INFO com.eventmaster.service.UserService - Found user with username: asmith
-```
-
-#### File Output
-Logs are stored in:
-- `logs/user-service.log` - All application logs
-- `logs/user-service-error.log` - Error logs only
-
-### Log Levels
-
-| Level | Usage | When to Use |
-|-------|-------|------------|
-| **TRACE** | Very detailed tracing | SQL parameter binding, low-level debugging |
-| **DEBUG** | Detailed information | Method entry/exit, variable values, flow tracking |
-| **INFO** | General information | User actions, service operations, important events |
-| **WARN** | Warning messages | Unusual but recoverable situations |
-| **ERROR** | Error messages | Errors that don't stop the application |
-
-### Configuring Log Levels
-
-To change log levels, edit `application.properties`:
-
-```properties
-# Change application logging to DEBUG
-logging.level.com.eventmaster=DEBUG
-
-# Change Spring Web logging to DEBUG
-logging.level.org.springframework.web=DEBUG
-
-# Change Hibernate SQL logging to DEBUG
-logging.level.org.hibernate.SQL=DEBUG
-logging.level.org.hibernate.type.descriptor.sql.BasicBinder=TRACE
-```
-
-### Log Examples
-
-#### User Creation
-```
-2025-02-22 10:15:30 [http-nio-8080-exec-1] DEBUG com.eventmaster.controller.UserController - POST request received to create user: newuser
-2025-02-22 10:15:30 [http-nio-8080-exec-1] INFO com.eventmaster.service.UserService - Attempting to save user with username: newuser
-2025-02-22 10:15:30 [http-nio-8080-exec-1] INFO com.eventmaster.service.UserService - Successfully saved user with id: 1 and username: newuser
-2025-02-22 10:15:30 [http-nio-8080-exec-1] INFO com.eventmaster.controller.UserController - User created successfully with id: 1
-```
-
-#### User Not Found
-```
-2025-02-22 10:16:45 [http-nio-8080-exec-2] DEBUG com.eventmaster.controller.UserController - GET request received for username: nonexistent
-2025-02-22 10:16:45 [http-nio-8080-exec-2] DEBUG com.eventmaster.service.UserService - Searching for user by username: nonexistent
-2025-02-22 10:16:45 [http-nio-8080-exec-2] WARN com.eventmaster.service.UserService - User not found with username: nonexistent
-```
-
-### Spring Boot Profiles
-
-The application supports different log levels based on active profiles:
-
-#### Development Profile
 ```bash
-mvn spring-boot:run -Dspring-boot.run.arguments="--spring.profiles.active=dev"
-```
-- Application logs: DEBUG
-- Spring Web logs: DEBUG
-- Hibernate SQL logs: DEBUG
-
-#### Production Profile
-```bash
-mvn spring-boot:run -Dspring-boot.run.arguments="--spring.profiles.active=prod"
-```
-- Application logs: INFO
-- Spring Framework logs: WARN
-
-
-
-### Get User by ID
-```http
-GET /user-service/users/{id}
-```
-Returns a user by their unique ID.
-
-**Response** (200 OK):
-```json
-{
-  "id": 1,
-  "username": "asmith",
-  "password": "encrypted_password",
-  "email": "asmith@example.com",
-  "name": "Alice Smith",
-  "location": "New York, NY",
-  "dateJoined": "2025-01-15"
-}
+cd user-service
+mvn spring-boot:run
 ```
 
-### Get User by Username
-```http
-GET /user-service/users/by-username/{username}
-```
-Returns a user by their username. Throws `UserNotFoundException` if not found.
+Uses H2 in-memory database — no setup required. Available at `http://localhost:8080/user-service`.
 
-**Response** (200 OK):
-```json
-{
-  "id": 1,
-  "username": "asmith",
-  "password": "encrypted_password",
-  "email": "asmith@example.com",
-  "name": "Alice Smith",
-  "location": "New York, NY",
-  "dateJoined": "2025-01-15"
-}
-```
+## Environment Variables
 
-### Get User by Email
-```http
-GET /user-service/users/by-email/{email}
-```
-Returns a user by their email address. Throws `UserNotFoundException` if not found.
+| Variable | Required | Default | Notes |
+|----------|----------|---------|-------|
+| `JWT_SECRET` | No | `eventmaster-shared-dev-secret-key-change-in-prod` | Must match all other services |
+| `ADMIN_USERNAME` | No | `admin` | Username that receives admin privileges |
 
-**Response** (200 OK):
-```json
-{
-  "id": 1,
-  "username": "asmith",
-  "password": "encrypted_password",
-  "email": "asmith@example.com",
-  "name": "Alice Smith",
-  "location": "New York, NY",
-  "dateJoined": "2025-01-15"
-}
-```
+## Testing
 
-### Get All Users
-```http
-GET /user-service/users
-```
-Returns a list of all users in the system.
-
-**Response** (200 OK):
-```json
-[
-  {
-    "id": 1,
-    "username": "asmith",
-    "email": "asmith@example.com",
-    "name": "Alice Smith",
-    "location": "New York, NY",
-    "dateJoined": "2025-01-15"
-  },
-  {
-    "id": 2,
-    "username": "jdoe",
-    "email": "jdoe@example.com",
-    "name": "John Doe",
-    "location": "Los Angeles, CA",
-    "dateJoined": "2025-02-01"
-  }
-]
-```
-
-### Create User
-```http
-POST /user-service/users
-Content-Type: application/json
-
-{
-  "username": "newuser",
-  "password": "secure_password",
-  "email": "newuser@example.com",
-  "name": "New User",
-  "location": "Chicago, IL"
-}
-```
-
-**Response** (201 Created):
-```json
-{
-  "id": 3,
-  "username": "newuser",
-  "password": "secure_password",
-  "email": "newuser@example.com",
-  "name": "New User",
-  "location": "Chicago, IL",
-  "dateJoined": "2025-02-22"
-}
-```
-
-### Error Responses
-
-**404 Not Found** (for GET endpoints):
-```json
-{
-  "status": 404,
-  "message": "User not found with id: 999"
-}
-```
-
-**Exception** (for `findByUsername` and `findByEmail`):
-```
-UserNotFoundException: User not found with username: nonexistent
-```
-
-## Project Structure
-
-```
-user-service/
-├── src/
-│   ├── main/
-│   │   ├── java/com/eventmaster/
-│   │   │   ├── UserServiceApplication.java      # Main Spring Boot application
-│   │   │   ├── config/
-│   │   │   │   └── WebConfig.java               # Web configuration
-│   │   │   ├── controller/
-│   │   │   │   └── UserController.java          # REST endpoints
-│   │   │   ├── service/
-│   │   │   │   └── UserService.java             # Business logic
-│   │   │   ├── repository/
-│   │   │   │   └── UserRepository.java          # Data access layer
-│   │   │   ├── model/
-│   │   │   │   └── User.java                    # User entity
-│   │   │   └── exception/
-│   │   │       ├── UserNotFoundException.java   # Custom exception
-│   │   │       └── GlobalExceptionHandler.java  # Exception handling
-│   │   └── resources/
-│   │       ├── application.properties           # Configuration
-│   │       └── schema.sql                       # Database schema
-│   └── test/
-│       └── java/
-│           └── UserServiceTest.java             # Unit tests
-├── pom.xml                                      # Maven configuration
-├── deploy.bat                                   # Deployment script
-└── README.md                                    # This file
-```
-
-## Running Tests
-
-Run all tests:
 ```bash
 mvn test
+# Run a single class
+mvn test -Dtest=UserServiceTest
 ```
-
-Run a specific test:
-```bash
-mvn test -Dtest=UserServiceTest#testUserFindByEmail
-```
-
-Run tests with coverage:
-```bash
-mvn test jacoco:report
-```
-
-## Building and Deployment
-
-### Build JAR
-```bash
-mvn clean package
-```
-
-The JAR file will be created in `target/user-service-1.0-SNAPSHOT.jar`
-
-### Run JAR
-```bash
-java -jar target/user-service-1.0-SNAPSHOT.jar
-```
-
-### Using deploy.bat
-On Windows, you can use the provided deployment script:
-```bash
-deploy.bat
-```
-
-## Key Classes
-
-### User Entity (`User.java`)
-- Represents a user in the system
-- JPA entity with automatic ID generation
-- Fields: id, username, password, email, name, location, dateJoined
-
-### UserService (`UserService.java`)
-- Business logic layer
-- Methods:
-  - `saveUser(User)` - Create or update a user
-  - `findById(Long)` - Find user by ID (returns Optional)
-  - `findByUsername(String)` - Find user by username (throws exception if not found)
-  - `findByEmail(String)` - Find user by email (throws exception if not found)
-  - `getAllUsers()` - Get all users
-
-### UserController (`UserController.java`)
-- REST API endpoints
-- Handles HTTP requests and responses
-- Maps service methods to endpoints
-
-### GlobalExceptionHandler (`GlobalExceptionHandler.java`)
-- Handles exceptions across the application
-- Provides consistent error responses
-
-## Notes
-
-- The H2 console is enabled for development purposes at `/user-service/h2-console`
-- Passwords should be encrypted in production (currently stored as plain text for development)
-- The database is in-memory and will be reset on application restart
-
-## License
-
-See LICENSE file for details.
-
-## Support
-
-For issues or questions, please contact the development team.
-
-## CI/CD Pipeline
-
-The repository uses **GitHub Actions** for continuous integration and automated security checks. The pipeline is defined in [`.github/workflows/ci.yml`](.github/workflows/ci.yml) and runs on every push to `master` and on every pull request targeting `master`.
-
-### Pipeline Jobs
-
-| Job | Trigger | Description |
-|-----|---------|-------------|
-| **Build & Test** | push / PR | Compiles the project with Maven and runs all unit tests |
-| **CodeQL Analysis** | push / PR | Static application security testing (SAST) via GitHub's CodeQL engine |
-| **Dependency Review** | PR only | Checks newly introduced or updated dependencies for known CVEs |
-
-#### Build & Test
-
-1. Checks out the source code.
-2. Sets up Java 11 (Eclipse Temurin) with **Maven dependency caching** to speed up repeated runs.
-3. Runs `mvn verify`, which compiles the code, executes all JUnit tests, and packages the JAR.
-4. Uploads Surefire test reports as a build artifact (kept for 7 days).
-
-#### CodeQL Analysis
-
-Performs static analysis on the Java source to detect common vulnerability classes (SQL injection, XSS, etc.). Results are uploaded to the **GitHub Security** tab. The job depends on `build-and-test` so it only runs when the build is green.
-
-#### Dependency Review
-
-Runs only on pull requests. Compares the dependency manifest before and after the change and fails the PR if any new dependency introduces a known vulnerability listed in the [GitHub Advisory Database](https://github.com/advisories).
-
-### Automated Dependency Updates (Dependabot)
-
-[`.github/dependabot.yml`](.github/dependabot.yml) configures Dependabot to open weekly pull requests for:
-
-- **Maven** dependencies (e.g. Spring Boot, Jackson)
-- **GitHub Actions** used in the workflow files
-
-### Secret Scanning
-
-GitHub Advanced Security **secret scanning** is enabled at the repository level and runs automatically on every push. No additional configuration is required.
-
-### Running Pipeline Checks Locally
-
-Run the same checks that the CI pipeline performs before pushing:
-
-```bash
-# Compile and run all unit tests (mirrors the "Build & Test" job)
-mvn --batch-mode verify
-
-# Run tests only (faster feedback loop)
-mvn --batch-mode test
-
-# Run a single test class
-mvn --batch-mode test -Dtest=UserServiceTest
-
-# Generate a test coverage report (requires JaCoCo, optional)
-mvn --batch-mode test jacoco:report
-```
-
-> **Tip:** Adding `--no-transfer-progress` suppresses Maven download progress lines for cleaner terminal output.
-

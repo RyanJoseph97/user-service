@@ -80,7 +80,10 @@ public class UserController {
     }
 
     @GetMapping("/by-email/{email}")
-    public ResponseEntity<User> getUserByEmail(@PathVariable String email) {
+    public ResponseEntity<User> getUserByEmail(@PathVariable String email, Authentication authentication) {
+        if (authentication == null || !adminUsername.equals(authentication.getName())) {
+            return ResponseEntity.status(403).build();
+        }
         logger.debug("GET request received for email: {}", email);
         User user = userService.findByEmail(email);
         if (user != null) {

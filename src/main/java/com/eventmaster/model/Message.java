@@ -29,12 +29,23 @@ public class Message {
     @Column(name = "read_at")
     private LocalDateTime readAt;
 
+    // Optional event attached to the message. When set, the message represents a
+    // shared event and the UI renders an event card instead of (or alongside) the text.
+    // Stored as the event-service's String id — never a cross-service FK.
+    @Column(name = "shared_event_id")
+    private String sharedEventId;
+
     public Message() {}
 
     public Message(String senderUsername, String recipientUsername, String content) {
+        this(senderUsername, recipientUsername, content, null);
+    }
+
+    public Message(String senderUsername, String recipientUsername, String content, String sharedEventId) {
         this.senderUsername = senderUsername;
         this.recipientUsername = recipientUsername;
         this.content = content;
+        this.sharedEventId = sharedEventId;
         this.sentAt = LocalDateTime.now();
     }
 
@@ -45,4 +56,6 @@ public class Message {
     public LocalDateTime getSentAt() { return sentAt; }
     public LocalDateTime getReadAt() { return readAt; }
     public void setReadAt(LocalDateTime readAt) { this.readAt = readAt; }
+    public String getSharedEventId() { return sharedEventId; }
+    public void setSharedEventId(String sharedEventId) { this.sharedEventId = sharedEventId; }
 }

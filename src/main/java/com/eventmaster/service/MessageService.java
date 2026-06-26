@@ -25,12 +25,25 @@ public class MessageService {
 
     @Transactional
     public Message send(String senderUsername, String recipientUsername, String content) {
+        return send(senderUsername, recipientUsername, content, null);
+    }
+
+    @Transactional
+    public Message send(String senderUsername, String recipientUsername, String content, String sharedEventId) {
         // Validate recipient exists
         userService.findByUsername(recipientUsername);
         if (senderUsername.equals(recipientUsername)) {
             throw new IllegalArgumentException("Cannot message yourself");
         }
-        return messageRepository.save(new Message(senderUsername, recipientUsername, content));
+        boolean hasContent = content != null && !content.isBlank();
+        boolean hasSharedEvent = sharedEventId != null && !sharedEventId.isBlank();
+        if (!hasContent && !hasSharedEvent) {
+            throw new IllegalArgumentException("Message must have content or a shared event");
+        }
+        // Persist a non-null content (column is NOT NULL); an event-only share carries an empty note.
+        String body = hasContent ? content : "";
+        return messageRepository.save(new Message(senderUsername, recipientUsername, body,
+                hasSharedEvent ? sharedEventId : null));
     }
 
     public List<Message> getThread(String viewerUsername, String otherUsername) {
@@ -62,7 +75,12 @@ public class MessageService {
                     }
                     long unread = messageRepository
                             .countByRecipientUsernameAndSenderUsernameAndReadAtIsNull(username, partner);
-                    return new ConversationSummary(partner, profilePics.get(partner), last.getContent(), last.getSentAt(), unread);
+                    // An event-only share has no text body — show a friendly placeholder in the list.
+                    boolean blankBody = last.getContent() == null || last.getContent().isBlank();
+                    String preview = blankBody && last.getSharedEventId() != null
+                            ? "📅 Shared an event"
+                            : last.getContent();
+                    return new ConversationSummary(partner, profilePics.get(partner), preview, last.getSentAt(), unread);
                 })
                 .filter(Objects::nonNull)
                 .sorted(Comparator.comparing(ConversationSummary::getLastMessageAt).reversed())

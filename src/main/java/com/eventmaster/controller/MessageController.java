@@ -23,7 +23,8 @@ public class MessageController {
     @PostMapping
     public ResponseEntity<Message> send(@Valid @RequestBody SendMessageRequest request,
                                         Authentication authentication) {
-        Message msg = messageService.send(authentication.getName(), request.getRecipientUsername(), request.getContent());
+        Message msg = messageService.send(authentication.getName(), request.getRecipientUsername(),
+                request.getContent(), request.getSharedEventId());
         return ResponseEntity.status(HttpStatus.CREATED).body(msg);
     }
 

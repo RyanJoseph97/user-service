@@ -55,6 +55,8 @@ public class SecurityConfig {
                 .antMatchers(HttpMethod.POST, "/users/token/refresh").permitAll()
                 .antMatchers(HttpMethod.POST, "/users/logout").permitAll()
                 .antMatchers("/h2-console/**").permitAll()
+                // Network-internal endpoints for sibling services; not exposed via the gateway.
+                .antMatchers("/internal/**").permitAll()
                 .antMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                 .anyRequest().authenticated()
             .and()

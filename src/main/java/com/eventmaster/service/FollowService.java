@@ -15,6 +15,7 @@ import com.eventmaster.model.Follow;
 import com.eventmaster.model.FollowRequest;
 import com.eventmaster.model.FollowRequestStatus;
 import com.eventmaster.model.FollowerSummary;
+import com.eventmaster.model.NotificationType;
 import com.eventmaster.model.User;
 import com.eventmaster.repository.FollowRepository;
 import com.eventmaster.repository.FollowRequestRepository;
@@ -31,6 +32,9 @@ public class FollowService {
 
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private NotificationService notificationService;
 
     /**
      * Follow or request-to-follow based on the target's privacy setting.
@@ -66,11 +70,23 @@ public class FollowService {
                     })
                     .orElseGet(() -> new FollowRequest(followerUsername, followeeUsername));
             followRequestRepository.save(request);
+            notificationService.create(
+                    followeeUsername,
+                    NotificationType.FOLLOW_REQUEST,
+                    followerUsername,
+                    followerUsername,
+                    "@" + followerUsername + " requested to follow you");
             logger.info("{} requested to follow {}", followerUsername, followeeUsername);
             return false;
         }
 
         followRepository.save(new Follow(follower, followee));
+        notificationService.create(
+                followeeUsername,
+                NotificationType.NEW_FOLLOWER,
+                followerUsername,
+                followerUsername,
+                "@" + followerUsername + " started following you");
         logger.info("{} followed {}", followerUsername, followeeUsername);
         return true;
     }
@@ -128,7 +144,8 @@ public class FollowService {
                 .map(f -> new FollowerSummary(
                         f.getFollower().getUsername(),
                         f.getFollower().getName(),
-                        f.getFollower().getDateJoined()));
+                        f.getFollower().getDateJoined(),
+                        f.getFollower().getProfilePictureUrl()));
     }
 
     public Page<FollowerSummary> getFollowing(String username, Pageable pageable) {
@@ -137,6 +154,7 @@ public class FollowService {
                 .map(f -> new FollowerSummary(
                         f.getFollowee().getUsername(),
                         f.getFollowee().getName(),
-                        f.getFollowee().getDateJoined()));
+                        f.getFollowee().getDateJoined(),
+                        f.getFollowee().getProfilePictureUrl()));
     }
 }

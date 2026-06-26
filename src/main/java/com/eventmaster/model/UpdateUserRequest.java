@@ -14,6 +14,9 @@ public class UpdateUserRequest {
     @Size(max = 100, message = "Location must not exceed 100 characters")
     private String location;
 
+    @Size(max = 1000, message = "Bio must not exceed 1000 characters")
+    private String bio;
+
     private Boolean privateProfile;
 
     private String profilePictureUrl;
@@ -26,6 +29,9 @@ public class UpdateUserRequest {
 
     public String getLocation() { return location; }
     public void setLocation(String location) { this.location = location; }
+
+    public String getBio() { return bio; }
+    public void setBio(String bio) { this.bio = bio; }
 
     public Boolean getPrivateProfile() { return privateProfile; }
     public void setPrivateProfile(Boolean privateProfile) { this.privateProfile = privateProfile; }

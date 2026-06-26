@@ -5,3 +5,5 @@ CREATE INDEX IF NOT EXISTS idx_follow_request_target_username  ON follow_request
 CREATE INDEX IF NOT EXISTS idx_message_sender_recipient        ON messages(sender_username, recipient_username);
 CREATE INDEX IF NOT EXISTS idx_message_recipient_username      ON messages(recipient_username);
 CREATE INDEX IF NOT EXISTS idx_refresh_token_username          ON refresh_tokens(username);
+CREATE INDEX IF NOT EXISTS idx_notification_recipient_username ON notifications(recipient_username);
+CREATE INDEX IF NOT EXISTS idx_notification_recipient_seen     ON notifications(recipient_username, seen);

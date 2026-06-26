@@ -46,6 +46,39 @@ public class MessageServiceTest {
     }
 
     @Test
+    public void send_sharedEventWithoutNote_savesWithSharedEventId() {
+        ArgumentCaptor<Message> captor = ArgumentCaptor.forClass(Message.class);
+        when(messageRepository.save(any(Message.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        messageService.send("alice", "bob", "", "event-123");
+
+        verify(messageRepository).save(captor.capture());
+        Message saved = captor.getValue();
+        assertEquals("event-123", saved.getSharedEventId());
+        assertEquals("", saved.getContent()); // empty note persisted as non-null
+    }
+
+    @Test
+    public void send_sharedEventWithNote_keepsBothContentAndEvent() {
+        ArgumentCaptor<Message> captor = ArgumentCaptor.forClass(Message.class);
+        when(messageRepository.save(any(Message.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        messageService.send("alice", "bob", "You should come!", "event-123");
+
+        verify(messageRepository).save(captor.capture());
+        assertEquals("You should come!", captor.getValue().getContent());
+        assertEquals("event-123", captor.getValue().getSharedEventId());
+    }
+
+    @Test
+    public void send_noContentAndNoEvent_throwsIllegalArgument() {
+        assertThrows(IllegalArgumentException.class,
+                () -> messageService.send("alice", "bob", "  ", null));
+
+        verify(messageRepository, never()).save(any());
+    }
+
+    @Test
     public void send_selfMessage_throwsIllegalArgument() {
         assertThrows(IllegalArgumentException.class,
                 () -> messageService.send("alice", "alice", "Hi me"));
