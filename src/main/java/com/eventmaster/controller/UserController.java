@@ -121,6 +121,8 @@ public class UserController {
         }
         User user = new User(request.getUsername(), request.getPassword(),
                 request.getEmail(), request.getName(), request.getLocation());
+        user.setLatitude(request.getLatitude());
+        user.setLongitude(request.getLongitude());
         User createdUser = userService.saveUserWithHashedPassword(user);
         logger.info("User created successfully with id: {}", createdUser.getId());
         return ResponseEntity.ok(createdUser);

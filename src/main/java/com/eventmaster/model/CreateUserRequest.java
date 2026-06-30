@@ -23,6 +23,10 @@ public class CreateUserRequest {
     @Size(max = 100, message = "Location must not exceed 100 characters")
     private String location;
 
+    private Double latitude;
+
+    private Double longitude;
+
     public String getUsername() { return username; }
     public void setUsername(String username) { this.username = username; }
 
@@ -37,4 +41,10 @@ public class CreateUserRequest {
 
     public String getLocation() { return location; }
     public void setLocation(String location) { this.location = location; }
+
+    public Double getLatitude() { return latitude; }
+    public void setLatitude(Double latitude) { this.latitude = latitude; }
+
+    public Double getLongitude() { return longitude; }
+    public void setLongitude(Double longitude) { this.longitude = longitude; }
 }
