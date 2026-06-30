@@ -39,8 +39,11 @@ public class User {
     @Column(name = "private_profile", nullable = false)
     private boolean privateProfile = false;
 
-    @Column(name = "profile_picture_url")
+    @Column(name = "profile_picture_url", length = 1000)
     private String profilePictureUrl;
+
+    @Column(length = 1000)
+    private String bio;
 
     @Column
     private Double latitude;
@@ -150,6 +153,14 @@ public class User {
 
     public void setProfilePictureUrl(String profilePictureUrl) {
         this.profilePictureUrl = profilePictureUrl;
+    }
+
+    public String getBio() {
+        return bio;
+    }
+
+    public void setBio(String bio) {
+        this.bio = bio;
     }
 
     public Double getLatitude() { return latitude; }

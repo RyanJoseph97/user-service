@@ -46,11 +46,21 @@ public class UserService {
             logger.info("Successfully saved user with id: {} and username: {}", savedUser.getId(), savedUser.getUsername());
             return savedUser;
         } catch (DataIntegrityViolationException e) {
-            // Parse the exception to determine which constraint was violated
-            String field = determineConstraintViolation(e, user);
-            logger.warn("Duplicate {} attempted: {}", field, "username".equals(field) ? user.getUsername() : user.getEmail());
-            throw new DuplicateUserException(field,
-                "username".equals(field) ? user.getUsername() : user.getEmail());
+            String message = e.getMessage();
+            // Only handle unique constraint violations, not other data integrity issues (like string length).
+            // Match across both databases we run on: PostgreSQL ("duplicate key value violates unique
+            // constraint") in Docker/prod, and H2 ("Unique index or primary key violation") in local dev/tests.
+            String lower = message != null ? message.toLowerCase() : "";
+            if (lower.contains("unique constraint") || lower.contains("duplicate key")
+                    || lower.contains("unique index or primary key violation")) {
+                String field = determineConstraintViolation(e, user);
+                logger.warn("Duplicate {} attempted: {}", field, "username".equals(field) ? user.getUsername() : user.getEmail());
+                throw new DuplicateUserException(field,
+                    "username".equals(field) ? user.getUsername() : user.getEmail());
+            }
+            // For other data integrity violations (like string length), log and rethrow
+            logger.error("Data integrity violation when saving user {}: {}", user.getUsername(), message);
+            throw e;
         } catch (Exception e) {
             logger.error("Error saving user with username: {}", user.getUsername(), e);
             throw e;
@@ -151,6 +161,7 @@ public class UserService {
         if (request.getEmail() != null) user.setEmail(request.getEmail());
         if (request.getName() != null) user.setName(request.getName());
         if (request.getLocation() != null) user.setLocation(request.getLocation());
+        if (request.getBio() != null) user.setBio(request.getBio());
         if (request.getPrivateProfile() != null) user.setPrivateProfile(request.getPrivateProfile());
         if (request.getProfilePictureUrl() != null) user.setProfilePictureUrl(request.getProfilePictureUrl());
         if (request.getLatitude() != null) user.setLatitude(request.getLatitude());

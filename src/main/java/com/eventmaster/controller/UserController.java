@@ -80,7 +80,10 @@ public class UserController {
     }
 
     @GetMapping("/by-email/{email}")
-    public ResponseEntity<User> getUserByEmail(@PathVariable String email) {
+    public ResponseEntity<User> getUserByEmail(@PathVariable String email, Authentication authentication) {
+        if (authentication == null || !adminUsername.equals(authentication.getName())) {
+            return ResponseEntity.status(403).build();
+        }
         logger.debug("GET request received for email: {}", email);
         User user = userService.findByEmail(email);
         if (user != null) {
@@ -118,6 +121,8 @@ public class UserController {
         }
         User user = new User(request.getUsername(), request.getPassword(),
                 request.getEmail(), request.getName(), request.getLocation());
+        user.setLatitude(request.getLatitude());
+        user.setLongitude(request.getLongitude());
         User createdUser = userService.saveUserWithHashedPassword(user);
         logger.info("User created successfully with id: {}", createdUser.getId());
         return ResponseEntity.ok(createdUser);
